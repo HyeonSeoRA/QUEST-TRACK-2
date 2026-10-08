@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2048</title>
+<style>
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    padding: 24px 16px;
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    background: #faf8ef;
+    color: #776e65;
+    display: flex;
+    justify-content: center;
+  }
+  .wrap { width: 100%; max-width: 440px; }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  h1 { font-size: 56px; margin: 0; color: #776e65; }
+  .scores { display: flex; gap: 6px; }
+  .score-box {
+    background: #bbada0;
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px 14px;
+    text-align: center;
+    min-width: 76px;
+  }
+  .score-box .label { font-size: 12px; color: #eee4da; font-weight: bold; }
+  .score-box .value { font-size: 22px; font-weight: bold; }
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 14px 0;
+  }
+  .howto { margin: 0; font-size: 15px; line-height: 1.5; }
+  button {
+    background: #8f7a66;
+    color: #f9f6f2;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button:hover { background: #9f8b77; }
+  .board {
+    position: relative;
+    background: #bbada0;
+    border-radius: 8px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    aspect-ratio: 1 / 1;
+    touch-action: none;
+    user-select: none;
+  }
+  .cell {
+    background: rgba(238, 228, 218, 0.35);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: clamp(20px, 8vw, 40px);
+  }
+  .cell.pop { animation: pop 0.15s ease; }
+  @keyframes pop {
+    0% { transform: scale(0.6); }
+    100% { transform: scale(1); }
+  }
+  .t2    { background: #eee4da; color: #776e65; }
+  .t4    { background: #ede0c8; color: #776e65; }
+  .t8    { background: #f2b179; color: #f9f6f2; }
+  .t16   { background: #f59563; color: #f9f6f2; }
+  .t32   { background: #f67c5f; color: #f9f6f2; }
+  .t64   { background: #f65e3b; color: #f9f6f2; }
+  .t128  { background: #edcf72; color: #f9f6f2; font-size: clamp(18px, 7vw, 34px); }
+  .t256  { background: #edcc61; color: #f9f6f2; font-size: clamp(18px, 7vw, 34px); }
+  .t512  { background: #edc850; color: #f9f6f2; font-size: clamp(18px, 7vw, 34px); }
+  .t1024 { background: #edc53f; color: #f9f6f2; font-size: clamp(14px, 5.5vw, 28px); }
+  .t2048 { background: #edc22e; color: #f9f6f2; font-size: clamp(14px, 5.5vw, 28px); }
+  .tbig  { background: #3c3a32; color: #f9f6f2; font-size: clamp(14px, 5.5vw, 28px); }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    background: rgba(250, 248, 239, 0.75);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+  }
+  .overlay p { font-size: 34px; font-weight: bold; margin: 0; }
+  .overlay .btns { display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>2048</h1>
+    <div class="scores">
+      <div class="score-box"><div class="label">점수</div><div class="value" id="score">0</div></div>
+      <div class="score-box"><div class="label">최고 점수</div><div class="value" id="best">0</div></div>
+    </div>
+  </header>
+
+  <div class="bar">
+    <p class="howto"><b>사용법:</b> 방향키(←↑→↓)로 타일을 밀어요. 같은 숫자가 부딪히면 합쳐져요. <b>2048</b>을 만들면 승리! (휴대폰은 화면을 밀기)</p>
+    <button id="restart">다시 하기</button>
+  </div>
+
+  <div class="board" id="board">
+    <div class="overlay" id="overlay" hidden>
+      <p id="message"></p>
+      <div class="btns">
+        <button id="keepGoing" hidden>계속 하기</button>
+        <button id="overlayRestart">다시 하기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SIZE = 4;
+  const boardEl = document.getElementById("board");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+  const overlay = document.getElementById("overlay");
+  const messageEl = document.getElementById("message");
+  const keepGoingBtn = document.getElementById("keepGoing");
+
+  let grid, score, won, keepPlaying, newCell;
+  let best = loadBest();
+
+  // 칸 16개 만들기
+  const cells = [];
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    const c = document.createElement("div");
+    c.className = "cell";
+    boardEl.insertBefore(c, overlay);
+    cells.push(c);
+  }
+
+  function loadBest() {
+    try { return Number(localStorage.getItem("best2048")) || 0; } catch (e) { return 0; }
+  }
+  function saveBest() {
+    try { localStorage.setItem("best2048", best); } catch (e) {}
+  }
+
+  function newGame() {
+    grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+    score = 0;
+    won = false;
+    keepPlaying = false;
+    overlay.hidden = true;
+    addTile();
+    addTile();
+    draw();
+  }
+
+  function addTile() {
+    const empty = [];
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (grid[r][c] === 0) empty.push([r, c]);
+    if (empty.length === 0) return;
+    const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+    grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+    newCell = r * SIZE + c;
+  }
+
+  // 한 줄을 왼쪽으로 밀고 합치기
+  function slideRow(row) {
+    const nums = row.filter(v => v !== 0);
+    const out = [];
+    for (let i = 0; i < nums.length; i++) {
+      if (nums[i] === nums[i + 1]) {
+        const v = nums[i] * 2;
+        out.push(v);
+        score += v;
+        if (v === 2048) won = true;
+        i++;
+      } else {
+        out.push(nums[i]);
+      }
+    }
+    while (out.length < SIZE) out.push(0);
+    return out;
+  }
+
+  function getLine(dir, i) {
+    const line = [];
+    for (let j = 0; j < SIZE; j++) {
+      if (dir === "left")  line.push(grid[i][j]);
+      if (dir === "right") line.push(grid[i][SIZE - 1 - j]);
+      if (dir === "up")    line.push(grid[j][i]);
+      if (dir === "down")  line.push(grid[SIZE - 1 - j][i]);
+    }
+    return line;
+  }
+  function setLine(dir, i, line) {
+    for (let j = 0; j < SIZE; j++) {
+      if (dir === "left")  grid[i][j] = line[j];
+      if (dir === "right") grid[i][SIZE - 1 - j] = line[j];
+      if (dir === "up")    grid[j][i] = line[j];
+      if (dir === "down")  grid[SIZE - 1 - j][i] = line[j];
+    }
+  }
+
+  function move(dir) {
+    if (!overlay.hidden) return;
+    const before = JSON.stringify(grid);
+    for (let i = 0; i < SIZE; i++) setLine(dir, i, slideRow(getLine(dir, i)));
+    if (JSON.stringify(grid) === before) return; // 아무것도 안 움직였으면 끝
+
+    addTile();
+    if (score > best) { best = score; saveBest(); }
+    draw();
+
+    if (won && !keepPlaying) {
+      showMessage("2048 달성! 🎉", true);
+    } else if (!canMove()) {
+      showMessage("게임 끝!", false);
+    }
+  }
+
+  function canMove() {
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++) {
+        if (grid[r][c] === 0) return true;
+        if (c < SIZE - 1 && grid[r][c] === grid[r][c + 1]) return true;
+        if (r < SIZE - 1 && grid[r][c] === grid[r + 1][c]) return true;
+      }
+    return false;
+  }
+
+  function showMessage(text, canContinue) {
+    messageEl.textContent = text;
+    keepGoingBtn.hidden = !canContinue;
+    overlay.hidden = false;
+  }
+
+  function draw() {
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++) {
+        const v = grid[r][c];
+        const el = cells[r * SIZE + c];
+        el.textContent = v || "";
+        el.className = "cell" + (v ? " " + (v > 2048 ? "tbig" : "t" + v) : "");
+        if (r * SIZE + c === newCell) el.classList.add("pop");
+      }
+    newCell = -1;
+    scoreEl.textContent = score;
+    bestEl.textContent = best;
+  }
+
+  // 방향키
+  const keys = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
+  document.addEventListener("keydown", e => {
+    if (keys[e.key]) {
+      e.preventDefault();
+      move(keys[e.key]);
+    }
+  });
+
+  // 휴대폰: 화면 밀기
+  let startX, startY;
+  boardEl.addEventListener("touchstart", e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  boardEl.addEventListener("touchend", e => {
+    if (startX === undefined) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    startX = undefined;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 30) return;
+    if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? "right" : "left");
+    else move(dy > 0 ? "down" : "up");
+  });
+
+  document.getElementById("restart").addEventListener("click", newGame);
+  document.getElementById("overlayRestart").addEventListener("click", newGame);
+  keepGoingBtn.addEventListener("click", () => {
+    keepPlaying = true;
+    overlay.hidden = true;
+  });
+
+  newGame();
+</script>
+</body>
+</html>
