@@ -1,0 +1,2030 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stellar Miner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Chakra+Petch:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #03040c;
+    --panel: linear-gradient(180deg, rgba(16, 20, 50, 0.86), rgba(8, 10, 28, 0.9));
+    --panel-2: rgba(255, 255, 255, 0.035);
+    --line: rgba(150, 170, 255, 0.14);
+    --line-2: rgba(150, 170, 255, 0.3);
+    --text: #eaedff;
+    --muted: #8f96c4;
+    --cyan: #5ef0ff;
+    --violet: #a77bff;
+    --pink: #ff6bd6;
+    --gold: #ffd166;
+    --danger: #ff6b8a;
+    --num: "Chakra Petch", "Noto Sans KR", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Noto Sans KR", system-ui, sans-serif;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; }
+
+  #sky { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+
+  .app {
+    position: relative; z-index: 1;
+    max-width: 1520px; margin: 0 auto;
+    min-height: 100vh;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  .panel {
+    position: relative;
+    background: var(--panel);
+    border-radius: 22px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  .panel::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+    background: linear-gradient(140deg, rgba(140, 200, 255, 0.45), rgba(150, 170, 255, 0.06) 35%, rgba(150, 170, 255, 0.04) 65%, rgba(200, 120, 255, 0.4));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    pointer-events: none; z-index: 2;
+  }
+
+  /* ---------- 헤더 ---------- */
+  .top { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 14px 18px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 50px; height: 50px; border-radius: 15px;
+    display: grid; place-items: center;
+    background: radial-gradient(circle at 30% 25%, rgba(94, 240, 255, 0.4), rgba(167, 123, 255, 0.2) 60%, rgba(10, 12, 30, 0.6));
+    border: 1px solid var(--line-2);
+    box-shadow: 0 0 26px rgba(94, 240, 255, 0.28), inset 0 0 12px rgba(94, 240, 255, 0.2);
+  }
+  .logo svg { width: 30px; height: 30px; filter: drop-shadow(0 0 6px rgba(94, 240, 255, 0.85)); animation: spin 18s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  h1 {
+    margin: 0;
+    font-family: Orbitron, sans-serif; font-weight: 900;
+    font-size: 22px; letter-spacing: 0.16em;
+    background: linear-gradient(90deg, #8ff8ff, var(--violet) 55%, var(--pink));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 12px rgba(140, 120, 255, 0.35));
+  }
+  .brand p { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; letter-spacing: 0.1em; }
+  .brand p b { color: var(--pink); font-weight: 700; }
+
+  .stats { flex: 1; display: flex; gap: 10px; justify-content: flex-end; min-width: 0; }
+  .stat {
+    flex: 1 1 0; min-width: 0; max-width: 260px; padding: 8px 14px; border-radius: 14px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 1px;
+  }
+  .stat .lbl { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; white-space: nowrap; }
+  .stat .val {
+    font-family: var(--num); font-weight: 700; font-size: 19px; font-variant-numeric: tabular-nums;
+    display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden;
+  }
+  .stat.main {
+    flex: 2.2 1 0; max-width: 520px;
+    border-color: rgba(255, 209, 102, 0.4);
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.16), rgba(255, 140, 60, 0.03));
+    box-shadow: inset 0 0 20px rgba(255, 209, 102, 0.08);
+  }
+  .stat.main .val { font-size: 26px; color: var(--gold); text-shadow: 0 0 16px rgba(255, 209, 102, 0.55); }
+  .gem { width: 20px; height: 20px; flex: none; filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.8)); }
+  .stat.main.bump .val { animation: bump .25s ease-out; }
+  @keyframes bump { 40% { transform: scale(1.05); } }
+
+  .tools { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 42px; height: 42px; border-radius: 12px; cursor: pointer;
+    display: grid; place-items: center;
+    background: var(--panel-2); border: 1px solid var(--line);
+    transition: border-color .2s, background .2s, color .2s;
+  }
+  .icon-btn:hover { border-color: var(--line-2); background: rgba(255, 255, 255, 0.07); color: var(--cyan); }
+  .icon-btn svg { width: 20px; height: 20px; }
+
+  /* ---------- 본문 ---------- */
+  .grid {
+    flex: none; display: grid; gap: 16px;
+    grid-template-columns: minmax(0, 1fr) 410px;
+    height: clamp(600px, calc(100vh - 160px), 1400px);
+  }
+  .grid > * { min-width: 0; }
+
+  .stage {
+    overflow: hidden; min-height: 0;
+    background: radial-gradient(ellipse at 50% 52%, rgba(40, 50, 140, 0.16), rgba(3, 4, 12, 0.42) 75%);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 0 120px rgba(0, 0, 0, 0.55);
+  }
+  #game { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: none; touch-action: manipulation; }
+  .boost-glow {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .6s;
+    background: radial-gradient(ellipse at 50% 55%, rgba(255, 200, 80, 0.18), transparent 70%);
+    box-shadow: inset 0 0 80px rgba(255, 190, 70, 0.35);
+  }
+  .boost-glow.on { opacity: 1; }
+  .nova-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 53%, #fff, rgba(255, 140, 220, .8) 30%, rgba(120, 80, 255, 0) 75%); }
+  .nova-flash.go { animation: nova 1.6s ease-out; }
+  @keyframes nova { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+
+  .corner { position: absolute; width: 22px; height: 22px; border: 2px solid rgba(94, 240, 255, 0.45); pointer-events: none; }
+  .corner.tl { top: 10px; left: 10px; border-right: 0; border-bottom: 0; border-top-left-radius: 8px; }
+  .corner.tr { top: 10px; right: 10px; border-left: 0; border-bottom: 0; border-top-right-radius: 8px; }
+  .corner.bl { bottom: 10px; left: 10px; border-right: 0; border-top: 0; border-bottom-left-radius: 8px; }
+  .corner.br { bottom: 10px; right: 10px; border-left: 0; border-top: 0; border-bottom-right-radius: 8px; }
+
+  .ore-card {
+    position: absolute; top: 22px; left: 22px;
+    width: min(360px, calc(100% - 44px));
+    padding: 12px 14px 11px; border-radius: 16px;
+    background: linear-gradient(180deg, rgba(10, 13, 34, 0.85), rgba(6, 8, 22, 0.75));
+    border: 1px solid color-mix(in srgb, var(--ore, #fff) 30%, transparent);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--ore, #fff) 12%, transparent);
+    pointer-events: none;
+  }
+  .sector { font-family: var(--num); font-size: 10.5px; letter-spacing: 0.22em; color: var(--muted); margin-bottom: 4px; }
+  .ore-name { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15.5px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ore, #fff); box-shadow: 0 0 10px var(--ore, #fff), 0 0 2px #fff; }
+  .ore-mult {
+    margin-left: auto; font-family: var(--num); font-weight: 700; font-size: 12px; color: var(--ore, #fff);
+    padding: 2px 8px; border-radius: 99px; background: color-mix(in srgb, var(--ore, #fff) 14%, transparent);
+  }
+  .hp { margin-top: 10px; height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+  .hp-fill {
+    height: 100%; width: 100%; border-radius: 99px; transform-origin: left center;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--ore, #fff) 45%, #fff), var(--ore, #fff));
+  }
+  .hp-text { margin-top: 6px; font-size: 11px; color: var(--muted); font-family: var(--num); letter-spacing: 0.04em; overflow-wrap: anywhere; }
+
+  .boost {
+    position: absolute; top: 22px; right: 22px;
+    padding: 8px 14px; border-radius: 99px;
+    font-weight: 700; font-size: 13px; color: #1a1200;
+    background: linear-gradient(90deg, #ffe08a, #ffb84d);
+    box-shadow: 0 0 28px rgba(255, 196, 77, 0.6);
+    pointer-events: none;
+    animation: pulse 1s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { transform: scale(1.05); } }
+
+  .stage-foot {
+    position: absolute; left: 16px; right: 16px; bottom: 18px;
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+    pointer-events: none;
+  }
+  .chip {
+    padding: 5px 12px; border-radius: 99px; font-size: 12px; color: var(--muted);
+    background: rgba(6, 8, 22, 0.6); border: 1px solid var(--line);
+  }
+  .chip b { color: var(--text); font-family: var(--num); font-weight: 600; margin-left: 5px; }
+  .hint {
+    position: absolute; left: 50%; bottom: 58px; transform: translateX(-50%);
+    max-width: calc(100% - 32px); text-align: center;
+    padding: 8px 16px; border-radius: 99px;
+    background: rgba(94, 240, 255, 0.1); border: 1px solid rgba(94, 240, 255, 0.35);
+    color: var(--cyan); font-size: 13px; pointer-events: none;
+    transition: opacity .6s;
+  }
+
+  /* ---------- 상점 ---------- */
+  .shop { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .shop-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px 4px; }
+  .shop-head h2 { margin: 0; font-size: 17px; letter-spacing: 0.06em; }
+  .shop-head .sub { font-family: var(--num); font-size: 10.5px; letter-spacing: .22em; color: var(--muted); }
+  .qty { margin-left: auto; display: flex; padding: 3px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); }
+  .qty button {
+    border: 0; background: transparent; cursor: pointer;
+    padding: 5px 11px; border-radius: 9px;
+    font-family: var(--num); font-weight: 600; font-size: 12px; color: var(--muted);
+  }
+  .qty button.on { background: rgba(94, 240, 255, 0.16); color: var(--cyan); box-shadow: inset 0 0 0 1px rgba(94, 240, 255, 0.3); }
+
+  .tabs { display: flex; gap: 2px; padding: 8px 12px 0; border-bottom: 1px solid var(--line); }
+  .tab {
+    flex: 1; border: 0; background: transparent; cursor: pointer; position: relative;
+    padding: 9px 4px 10px; border-radius: 10px 10px 0 0;
+    color: var(--muted); font-weight: 700; font-size: 13px; white-space: nowrap;
+    transition: color .2s, background .2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.on { color: var(--text); background: rgba(255, 255, 255, 0.05); }
+  .tab.on::after { content: ""; position: absolute; left: 18%; right: 18%; bottom: -1px; height: 2px; border-radius: 2px; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+  .badge {
+    display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 4px;
+    border-radius: 99px; background: var(--gold); color: #1a1200; font-size: 11px; font-family: var(--num); vertical-align: 1px;
+  }
+  .badge.soft { background: rgba(255, 255, 255, 0.1); color: var(--muted); }
+
+  .shop-scroll { overflow-y: auto; padding: 4px 14px 16px; flex: 1; scrollbar-width: thin; scrollbar-color: rgba(150, 170, 255, .25) transparent; }
+  .shop h3 { display: flex; align-items: center; gap: 8px; margin: 14px 4px 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.16em; color: var(--muted); }
+  .shop h3::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+  .empty { padding: 26px 12px; text-align: center; color: var(--muted); font-size: 13px; line-height: 1.7; }
+
+  .item {
+    --accent: var(--cyan);
+    position: relative; overflow: hidden;
+    width: 100%; text-align: left; cursor: pointer;
+    display: grid; grid-template-columns: 54px 1fr auto; align-items: center; gap: 12px;
+    padding: 11px 12px 13px; margin-bottom: 8px; border-radius: 16px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
+    border: 1px solid var(--line);
+    transition: transform .15s, border-color .2s, box-shadow .2s, opacity .2s, background .2s;
+  }
+  .item.can { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+  .item.can::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+    animation: sheen 3.2s ease-in-out infinite; pointer-events: none;
+  }
+  @keyframes sheen { 60%, 100% { left: 130%; } }
+  .item.can:hover {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    box-shadow: 0 0 26px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .item.can:active { transform: translateY(1px) scale(0.99); }
+  .item:not(.can) { opacity: 0.55; cursor: not-allowed; }
+  .item.flash { animation: buyflash .4s ease-out; }
+  @keyframes buyflash { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 70%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
+  .bar {
+    position: absolute; left: 12px; right: 12px; bottom: 5px; height: 2px; border-radius: 2px;
+    background: rgba(255, 255, 255, 0.06); overflow: hidden;
+  }
+  .bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); box-shadow: 0 0 6px var(--accent); }
+  .ico {
+    width: 54px; height: 54px; border-radius: 15px;
+    display: grid; place-items: center; color: var(--accent);
+    background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 32%, transparent), color-mix(in srgb, var(--accent) 6%, transparent) 70%);
+    border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+    box-shadow: inset 0 0 14px color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  .ico svg { width: 34px; height: 34px; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 70%, transparent)); }
+  .info { min-width: 0; }
+  .nm { font-weight: 700; font-size: 14.5px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .lv { font-family: var(--num); font-size: 11px; color: var(--accent); font-weight: 600; }
+  .ds { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .cost {
+    display: flex; align-items: center; gap: 5px; margin-top: 4px;
+    font-family: var(--num); font-weight: 700; font-size: 14px; color: var(--gold);
+    overflow-wrap: anywhere; font-variant-numeric: tabular-nums;
+  }
+  .cost svg { width: 13px; height: 13px; flex: none; }
+  .item:not(.can) .cost { color: var(--danger); }
+  .own { font-family: var(--num); font-size: 24px; font-weight: 700; color: rgba(255, 255, 255, 0.22); padding-left: 4px; }
+  .item.locked .ico svg { filter: brightness(0) opacity(.45); }
+  .req { color: var(--danger); font-size: 11.5px; margin-top: 2px; }
+
+  /* 업적 */
+  .ach-sum {
+    display: flex; align-items: center; gap: 12px; padding: 14px; margin: 12px 0;
+    border-radius: 16px; border: 1px solid rgba(255, 209, 102, 0.3);
+    background: linear-gradient(135deg, rgba(255, 209, 102, 0.12), rgba(255, 209, 102, 0.02));
+  }
+  .ach-sum svg { width: 40px; height: 40px; color: var(--gold); filter: drop-shadow(0 0 8px rgba(255, 209, 102, .7)); flex: none; }
+  .ach-sum b { font-family: var(--num); font-size: 20px; color: var(--gold); }
+  .ach-sum span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .ach {
+    padding: 10px 11px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--panel-2); opacity: .45; filter: grayscale(1);
+    transition: opacity .3s, filter .3s;
+  }
+  .ach.got { opacity: 1; filter: none; border-color: rgba(255, 209, 102, .45); background: linear-gradient(135deg, rgba(255, 209, 102, .14), rgba(255, 209, 102, .02)); }
+  .ach b { display: block; font-size: 13px; }
+  .ach.got b::before { content: "★ "; color: var(--gold); }
+  .ach span { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* 초신성 */
+  .nova { margin-top: 12px; padding: 18px; border-radius: 18px; text-align: center;
+    border: 1px solid rgba(255, 107, 214, 0.35);
+    background: radial-gradient(circle at 50% 0%, rgba(255, 107, 214, 0.18), rgba(120, 80, 255, 0.05) 60%, transparent);
+  }
+  .nova-star { width: 84px; height: 84px; margin: 4px auto 8px; color: var(--pink); filter: drop-shadow(0 0 16px rgba(255, 107, 214, .9)); animation: spin 14s linear infinite; }
+  .nova h4 { margin: 0 0 6px; font-size: 18px; }
+  .nova p { margin: 0 auto 14px; max-width: 320px; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+  .nova-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .nova-stats div { padding: 10px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); }
+  .nova-stats span { display: block; font-size: 11px; color: var(--muted); }
+  .nova-stats b { font-family: var(--num); font-size: 18px; color: var(--pink); overflow-wrap: anywhere; }
+  .nova-btn {
+    width: 100%; padding: 13px; border: 0; border-radius: 14px; cursor: pointer;
+    font-weight: 900; font-size: 15px; color: #fff; letter-spacing: .04em;
+    background: linear-gradient(90deg, #ff6bd6, #a77bff);
+    box-shadow: 0 0 30px rgba(255, 107, 214, .45);
+  }
+  .nova-btn:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+  .nova small { display: block; margin-top: 10px; font-size: 11.5px; color: var(--muted); }
+
+  /* ---------- 토스트 ---------- */
+  .toasts { position: fixed; left: 50%; top: 140px; transform: translateX(-50%); z-index: 10; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); }
+  .toast {
+    padding: 11px 18px; border-radius: 14px; font-size: 14px; font-weight: 500;
+    background: rgba(12, 16, 40, 0.94); border: 1px solid var(--line-2);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55), 0 0 24px rgba(94, 240, 255, 0.12);
+    animation: toastIn .35s cubic-bezier(.2, 1.4, .4, 1) both;
+  }
+  .toast.gold { border-color: rgba(255, 209, 102, .5); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55), 0 0 24px rgba(255, 209, 102, 0.25); }
+  .toast.out { animation: toastOut .4s ease-in both; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(-14px) scale(.96); } }
+  @keyframes toastOut { to { opacity: 0; transform: translateY(-10px); } }
+
+  @media (max-width: 1100px) {
+    .stats { width: 100%; order: 3; flex: none; }
+    .stat, .stat.main { max-width: none; }
+    .brand { margin-right: auto; }
+  }
+  @media (max-width: 960px) {
+    .app { padding: 12px 16px; }
+    .grid { grid-template-columns: 1fr; height: auto; }
+    .stage { height: 64vh; min-height: 440px; }
+    .shop { max-height: 80vh; }
+  }
+  @media (max-width: 520px) {
+    .stats { flex-wrap: wrap; }
+    .stat.main { flex-basis: 100%; }
+    .stat .val { font-size: 15px; }
+    .stat.main .val { font-size: 20px; }
+    .gem { width: 15px; height: 15px; }
+    h1 { font-size: 18px; }
+    .tab { font-size: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .logo svg, .item.can::after, .boost, .nova-star { animation: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+
+<div class="app">
+  <header class="top panel">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 48 48" fill="none">
+          <path d="M24 3l4.6 14.4L43 22l-14.4 4.6L24 41l-4.6-14.4L5 22l14.4-4.6z" fill="#5ef0ff"/>
+          <circle cx="24" cy="22" r="4" fill="#fff"/>
+        </svg>
+      </div>
+      <div>
+        <h1>STELLAR MINER</h1>
+        <p>우주 광부 클리커<span id="shardTag"></span></p>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat main" id="creditBox"><span class="lbl">크레딧</span>
+        <span class="val"><svg class="gem" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9z" fill="#ffd166"/><path d="M2 9h20L12 21z" fill="#ffb347"/><path d="M8 3l4 6 4-6M2 9l10 0" stroke="#fff6d6" stroke-width="1" fill="none" opacity=".7"/></svg><span id="credits">0</span></span>
+      </div>
+      <div class="stat"><span class="lbl">초당 채굴</span><span class="val" id="cps">0</span></div>
+      <div class="stat"><span class="lbl">클릭당</span><span class="val" id="cpc">0</span></div>
+    </div>
+    <div class="tools">
+      <button class="icon-btn" id="mute" title="소리 켜기/끄기" aria-label="소리 켜기/끄기"></button>
+      <button class="icon-btn" id="reset" title="처음부터 다시" aria-label="처음부터 다시">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="stage panel" id="stage">
+      <canvas id="game"></canvas>
+      <div class="boost-glow" id="boostGlow"></div>
+      <div class="nova-flash" id="novaFlash"></div>
+      <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+      <div class="ore-card">
+        <div class="sector" id="sector">SECTOR 01</div>
+        <div class="ore-name"><span class="dot"></span><span id="oreName"></span><span class="ore-mult" id="oreMult"></span></div>
+        <div class="hp"><div class="hp-fill" id="hpFill"></div></div>
+        <div class="hp-text" id="hpText"></div>
+      </div>
+      <div class="boost" id="boost" hidden>⚡ 혜성 부스트 x7 · <span id="boostT">0</span>초</div>
+      <div class="hint" id="hint">소행성을 빠르게 연타하면 콤보가 쌓여요 · 황금 혜성이 지나가면 잡아보세요!</div>
+      <div class="stage-foot">
+        <span class="chip">부순 소행성<b id="broken">0</b></span>
+        <span class="chip">총 채굴<b id="total">0</b></span>
+        <span class="chip">클릭<b id="clicks">0</b></span>
+      </div>
+    </section>
+
+    <aside class="shop panel">
+      <div class="shop-head">
+        <div><h2>상점</h2><div class="sub">SUPPLY DEPOT</div></div>
+        <div class="qty" id="qty">
+          <button data-q="1" class="on">x1</button>
+          <button data-q="10">x10</button>
+          <button data-q="100">x100</button>
+        </div>
+      </div>
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-tab="main">부대</button>
+        <button class="tab" data-tab="research">연구<span class="badge" id="resBadge" hidden></span></button>
+        <button class="tab" data-tab="ach">업적<span class="badge soft" id="achBadge">0</span></button>
+        <button class="tab" data-tab="nova">초신성</button>
+      </div>
+      <div class="shop-scroll" id="shopScroll">
+        <div data-pane="main">
+          <h3>장비</h3>
+          <div id="gear"></div>
+          <h3>탐사</h3>
+          <div id="explore"></div>
+          <h3>채굴 부대</h3>
+          <div id="units"></div>
+        </div>
+        <div data-pane="research" hidden>
+          <h3>지금 할 수 있는 연구</h3>
+          <div id="research"></div>
+          <div class="empty" id="resLocked"></div>
+        </div>
+        <div data-pane="ach" hidden>
+          <div class="ach-sum">
+            <svg viewBox="0 0 48 48"><path d="M14 6h20v10a10 10 0 0 1-20 0z" fill="currentColor"/><path d="M14 9H6a8 8 0 0 0 8 10M34 9h8a8 8 0 0 1-8 10" fill="none" stroke="currentColor" stroke-width="3"/><rect x="21" y="26" width="6" height="8" fill="currentColor"/><rect x="14" y="34" width="20" height="6" rx="2" fill="currentColor"/></svg>
+            <div><b id="achCount">0 / 0</b><span id="achBonus">업적 하나마다 모든 생산 +2%</span></div>
+          </div>
+          <div class="ach-grid" id="achGrid"></div>
+        </div>
+        <div data-pane="nova" hidden>
+          <div class="nova">
+            <svg class="nova-star" viewBox="0 0 48 48"><path d="M24 1l4 15 14-7-8 13 14 3-14 4 8 13-14-7-4 15-4-15-14 7 8-13L0 26l14-4-8-13 14 7z" fill="currentColor"/><circle cx="24" cy="24" r="6" fill="#fff"/></svg>
+            <h4>초신성 폭발</h4>
+            <p>지금까지의 크레딧·장비·부대·연구·탐사를 모두 터뜨리고 처음부터 다시 시작해요. 대신 <b style="color:var(--pink)">별 조각</b>을 얻고, 조각 하나마다 <b>모든 생산이 영원히 +5%</b> 늘어나요. 업적은 그대로 남아요.</p>
+            <div class="nova-stats">
+              <div><span>가진 별 조각</span><b id="novaHave">0</b></div>
+              <div><span>지금 터뜨리면 얻는 조각</span><b id="novaGain">0</b></div>
+              <div><span>지금 보너스</span><b id="novaBonus">+0%</b></div>
+              <div><span>터뜨린 뒤 보너스</span><b id="novaAfter">+0%</b></div>
+            </div>
+            <button class="nova-btn" id="novaBtn" disabled>초신성 폭발!</button>
+            <small id="novaNext"></small>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ================= 데이터 ================= */
+const ORES = [
+  { name: '운석 바위',         base: ['#c4bcb0', '#756c63', '#211d1a'], vein: '#ffe2b8', mult: 1,     hp: 25,     cost: 0 },
+  { name: '구리 소행성',       base: ['#b38b74', '#5e3f33', '#1e110c'], vein: '#ff8a3d', mult: 4,     hp: 80,     cost: 400 },
+  { name: '코발트 소행성',     base: ['#97a3b8', '#4a5468', '#121724'], vein: '#4da3ff', mult: 15,    hp: 300,    cost: 6000 },
+  { name: '황금 소행성',       base: ['#b0a47f', '#5c5137', '#1c170e'], vein: '#ffcf3d', mult: 60,    hp: 1200,   cost: 90000 },
+  { name: '에메랄드 소행성',   base: ['#88a395', '#3c5248', '#0e1a15'], vein: '#2dffa0', mult: 250,   hp: 5000,   cost: 1.5e6 },
+  { name: '다이아몬드 소행성', base: ['#a3aecb', '#4b5677', '#121829'], vein: '#8ff4ff', mult: 1100,  hp: 22000,  cost: 3e7 },
+  { name: '별의 심장',         base: ['#b991c7', '#5a3570', '#1a0d27'], vein: '#ff5fd8', mult: 5000,  hp: 1e5,    cost: 7e8 },
+  { name: '플라즈마 결정',     base: ['#c48a96', '#6a2f40', '#1f0a12'], vein: '#ff4d6d', mult: 25000, hp: 4.5e5,  cost: 2e10 },
+  { name: '암흑 물질',         base: ['#7c74a8', '#2c2650', '#08061a'], vein: '#9b7bff', mult: 1.3e5, hp: 2e6,    cost: 6e11 },
+  { name: '퀘이사 핵',         base: ['#d8cfa8', '#6b6040', '#1a160a'], vein: '#fff1a8', mult: 7e5,   hp: 9e6,    cost: 2e13 },
+];
+
+const ICONS = {
+  pick: '<svg viewBox="0 0 48 48"><g transform="rotate(-35 24 24)"><path d="M6 19Q24 1 42 19Q24 10 6 19Z" fill="currentColor"/><rect x="21.5" y="11" width="5" height="33" rx="2.5" fill="#c9d3ff"/></g></svg>',
+  explore: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="10" fill="currentColor"/><circle cx="20" cy="20" r="3" fill="#fff" opacity=".5"/><ellipse cx="24" cy="24" rx="20" ry="6.5" fill="none" stroke="currentColor" stroke-width="2.5" transform="rotate(-20 24 24)"/></svg>',
+  miner: '<svg viewBox="0 0 48 48"><path d="M9 32a15 15 0 0 1 30 0z" fill="currentColor"/><rect x="6" y="31" width="36" height="5" rx="2.5" fill="currentColor" opacity=".65"/><path d="M24 23L45 13V33Z" fill="#fffbe0" opacity=".25"/><circle cx="24" cy="23" r="4.5" fill="#fffbe0"/></svg>',
+  drill: '<svg viewBox="0 0 48 48"><rect x="21" y="3" width="6" height="6" rx="1" fill="currentColor"/><rect x="16" y="9" width="16" height="9" rx="2" fill="currentColor" opacity=".6"/><path d="M14 18h20l-10 26z" fill="currentColor"/><path d="M16 24h16M19 31h10" stroke="#0b0f22" stroke-width="2.2"/></svg>',
+  bot: '<svg viewBox="0 0 48 48"><path d="M24 14V8" stroke="currentColor" stroke-width="2.5"/><circle cx="24" cy="6" r="2.8" fill="#fff"/><rect x="9" y="14" width="30" height="22" rx="7" fill="currentColor"/><circle cx="18.5" cy="25" r="4" fill="#0b0f22"/><circle cx="29.5" cy="25" r="4" fill="#0b0f22"/><circle cx="18.5" cy="25" r="1.6" fill="#fff"/><circle cx="29.5" cy="25" r="1.6" fill="#fff"/><rect x="16" y="38" width="16" height="4" rx="2" fill="currentColor" opacity=".6"/></svg>',
+  laser: '<svg viewBox="0 0 48 48"><rect x="2" y="17" width="14" height="10" rx="1.5" fill="currentColor" opacity=".55"/><rect x="32" y="17" width="14" height="10" rx="1.5" fill="currentColor" opacity=".55"/><rect x="18" y="13" width="12" height="18" rx="3" fill="currentColor"/><path d="M24 31V46" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>',
+  ship: '<svg viewBox="0 0 48 48"><path d="M19 37L24 47L29 37Z" fill="#ffcf6b"/><path d="M24 3C32 11 34 23 32 37H16C14 23 16 11 24 3Z" fill="currentColor"/><circle cx="24" cy="18" r="4" fill="#0b0f22"/><path d="M16 27L7 40L16 37ZM32 27L41 40L32 37Z" fill="currentColor" opacity=".7"/></svg>',
+  harvester: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5"/><circle cx="24" cy="24" r="15.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-dasharray="4 3"/><circle cx="24" cy="24" r="9" fill="currentColor"/><circle cx="24" cy="24" r="4" fill="#fff" opacity=".8"/></svg>',
+  tug: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="15" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".5"/><path d="M24 3v10M24 35v10M3 24h10M35 24h10" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><circle cx="24" cy="24" r="7" fill="currentColor"/></svg>',
+  wormhole: '<svg viewBox="0 0 48 48"><ellipse cx="24" cy="24" rx="21" ry="10" fill="none" stroke="currentColor" stroke-width="2" opacity=".45"/><ellipse cx="24" cy="24" rx="15" ry="7" fill="none" stroke="currentColor" stroke-width="2.5" opacity=".75"/><ellipse cx="24" cy="24" rx="8" ry="4" fill="currentColor"/><ellipse cx="24" cy="24" rx="3" ry="1.5" fill="#0b0f22"/></svg>',
+  dyson: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" stroke-width="5" stroke-dasharray="7 3"/><circle cx="24" cy="24" r="8" fill="#fff3c4"/><circle cx="24" cy="24" r="11" fill="none" stroke="currentColor" stroke-width="1" opacity=".6"/></svg>',
+  galaxy: '<svg viewBox="0 0 48 48"><path d="M24 24c0-4 6-4 6 0s-8 8-12 2-2-14 8-14 16 10 10 18-20 10-24 0" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><circle cx="24" cy="24" r="3.4" fill="#fff"/></svg>',
+  crit: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="14" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="24" cy="24" r="4.5" fill="currentColor"/><path d="M24 2v10M24 36v10M2 24h10M36 24h10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+  comet: '<svg viewBox="0 0 48 48"><path d="M27 21L5 43M22 15L7 26M33 26L22 41" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55"/><circle cx="32" cy="16" r="9" fill="currentColor"/><circle cx="29" cy="13" r="3" fill="#fff" opacity=".7"/></svg>',
+  boom: '<svg viewBox="0 0 48 48"><path d="M24 2l5 13 13-5-6 12 11 8-14 2 2 14-11-9-11 9 2-14-14-2 11-8-6-12 13 5z" fill="currentColor"/><circle cx="24" cy="24" r="5" fill="#fff" opacity=".8"/></svg>',
+  refine: '<svg viewBox="0 0 48 48"><path d="M17 4h14M20 4v12L8 39a4 4 0 0 0 4 6h24a4 4 0 0 0 4-6L28 16V4" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M13 31h22l4 8a3 3 0 0 1-3 4H12a3 3 0 0 1-3-4z" fill="currentColor"/></svg>',
+  star: '<svg viewBox="0 0 48 48"><path d="M24 3l6 14 15 1-11 10 4 15-14-8-14 8 4-15L2 18l15-1z" fill="currentColor"/></svg>',
+  moon: '<svg viewBox="0 0 48 48"><path d="M30 5a19 19 0 1 0 13 31A16 16 0 0 1 30 5z" fill="currentColor"/><circle cx="38" cy="10" r="2" fill="#fff"/><circle cx="43" cy="20" r="1.4" fill="#fff"/></svg>',
+  combo: '<svg viewBox="0 0 48 48"><path d="M28 2L8 28h14l-4 18 22-28H26z" fill="currentColor"/></svg>',
+};
+const GEM_SVG = '<svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9z" fill="#ffd166"/><path d="M2 9h20L12 21z" fill="#ffb347"/></svg>';
+
+const UNITS = [
+  { id: 'miner',     name: '우주 광부',     desc: '헬멧 램프를 켠 성실한 광부',           base: 15,     mps: 0.5,   color: '#ffd166' },
+  { id: 'drill',     name: '플라즈마 드릴', desc: '암석을 녹이며 파고드는 드릴',           base: 120,    mps: 4,     color: '#ff8a5c' },
+  { id: 'bot',       name: '채굴 로봇',     desc: '쉬지 않고 일하는 자동 로봇',            base: 1100,   mps: 25,    color: '#5ef0ff' },
+  { id: 'laser',     name: '궤도 레이저',   desc: '궤도에서 소행성을 정밀 절단',           base: 12000,  mps: 150,   color: '#ff5f8f' },
+  { id: 'ship',      name: '채굴 모선',     desc: '수백 대의 드론을 싣고 다니는 배',       base: 1.3e5,  mps: 900,   color: '#a77bff' },
+  { id: 'harvester', name: '항성 수확기',   desc: '별의 에너지까지 끌어 쓰는 거대 장치',   base: 1.4e6,  mps: 6000,  color: '#ff9df5' },
+  { id: 'tug',       name: '중력 견인선',   desc: '소행성 무리를 통째로 끌어와요',         base: 2e7,    mps: 4.5e4, color: '#9dff6b' },
+  { id: 'wormhole',  name: '웜홀 채굴기',   desc: '다른 차원의 광맥까지 파고들어요',       base: 3.3e8,  mps: 3.2e5, color: '#7b8cff' },
+  { id: 'dyson',     name: '다이슨 스웜',   desc: '별 하나를 통째로 감싸는 채굴망',        base: 5.1e9,  mps: 2.4e6, color: '#ffb347' },
+  { id: 'galaxy',    name: '은하 엔진',     desc: '은하의 회전력으로 우주를 갈아내요',     base: 7.5e10, mps: 1.8e7, color: '#e0c3ff' },
+];
+const UNIT_MAP = Object.fromEntries(UNITS.map(u => [u.id, u]));
+
+const PICK_TIERS = [
+  { name: '돌 곡괭이',       color: '#e8dccb' },
+  { name: '강철 곡괭이',     color: '#9fc4ff' },
+  { name: '티타늄 곡괭이',   color: '#7ef3ff' },
+  { name: '플라즈마 곡괭이', color: '#ff6bd6' },
+  { name: '양자 곡괭이',     color: '#a77bff' },
+  { name: '항성 곡괭이',     color: '#ffd166' },
+  { name: '블랙홀 곡괭이',   color: '#9b7bff' },
+  { name: '빅뱅 곡괭이',     color: '#ffffff' },
+];
+const pickTier = () => PICK_TIERS[Math.min(PICK_TIERS.length - 1, Math.floor(S.pick / 15))];
+
+/* ---------- 연구 (한 번 사면 영원히) ---------- */
+const UPGRADES = [];
+const TIER_OWN = [10, 25, 50, 100, 150, 200];
+const TIER_COST = [40, 400, 6000, 1e5, 2e6, 5e7];
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+UNITS.forEach(u => TIER_OWN.forEach((own, i) => UPGRADES.push({
+  id: `${u.id}${i}`, name: `${u.name} 강화 ${ROMAN[i]}`, desc: `${u.name}의 생산량이 2배가 돼요`,
+  cost: u.base * TIER_COST[i], icon: u.id, color: u.color, eff: { unit: u.id },
+  req: () => S.units[u.id] >= own, near: () => S.units[u.id] >= own * 0.6, reqText: `${u.name} ${own}대 필요`,
+})));
+const gen = (id, name, desc, cost, icon, color, eff) => UPGRADES.push({ id, name, desc, cost, icon, color, eff, req: () => true, near: () => S.runTotal >= cost * 0.15 });
+gen('crit1', '약점 분석 스캐너', '치명타 확률 +5%', 2000, 'crit', '#ffd166', { crit: 0.05 });
+gen('combo1', '리듬 센서', '콤보 최대 배율 x3 → x4', 8000, 'combo', '#5ef0ff', { comboCap: 150 });
+gen('break1', '파쇄 폭약', '소행성 파괴 보너스 3배', 15000, 'boom', '#ff8a5c', { breakMult: 3 });
+gen('click1', '반동 증폭기', '클릭할 때 초당 채굴량의 1%를 더 캐요', 5e4, 'pick', '#7ef3ff', { clickPct: 0.01 });
+gen('critx1', '고밀도 탄두', '치명타 배율 x5 → x10', 6e4, 'crit', '#ff5f8f', { critMult: 5 });
+gen('comet1', '혜성 레이더', '황금 혜성이 40% 더 자주 나타나요', 1e5, 'comet', '#ffd166', { cometFreq: 0.4 });
+gen('crit2', 'AI 조준 보조', '치명타 확률 +5%', 2e5, 'crit', '#ffd166', { crit: 0.05 });
+gen('refine1', '정밀 정제소', '모든 광석 가치 x1.5', 3e5, 'refine', '#2dffa0', { refine: 1.5 });
+gen('offline1', '자동 관제소', '자리 비운 동안 100% 효율 · 최대 8시간', 5e5, 'moon', '#8fb4ff', { offline: true });
+gen('global1', '우주 광업 협회', '모든 생산 x1.5', 1e6, 'star', '#a77bff', { global: 1.5 });
+gen('comet2', '혜성 자석', '혜성 부스트 20초 → 35초', 2e6, 'comet', '#ffb347', { boostTime: 15 });
+gen('click2', '양자 공명 곡괭이', '클릭 + 초당 채굴량의 2%', 5e6, 'pick', '#a77bff', { clickPct: 0.02 });
+gen('combo2', '광속 반사신경', '콤보 최대 x6 · 콤보 유지 시간 +0.5초', 1e7, 'combo', '#ff6bd6', { comboCap: 250, comboTime: 0.5 });
+gen('break2', '연쇄 붕괴 장치', '소행성 파괴 보너스 3배 더', 2e7, 'boom', '#ff4d6d', { breakMult: 3 });
+gen('critx2', '반물질 탄두', '치명타 배율 +10배', 5e7, 'crit', '#ff4d6d', { critMult: 10 });
+gen('crit3', '예지 회로', '치명타 확률 +5%', 2e8, 'crit', '#ffd166', { crit: 0.05 });
+gen('comet3', '황금 궤도', '황금 혜성 보상 2배', 3e8, 'comet', '#fff1a8', { cometReward: 2 });
+gen('click3', '중성자별 망치', '클릭 + 초당 채굴량의 3%', 5e8, 'pick', '#ff6bd6', { clickPct: 0.03 });
+gen('global2', '은하 연합 투자', '모든 생산 x2', 1e9, 'star', '#a77bff', { global: 2 });
+gen('refine2', '원자 정제소', '모든 광석 가치 x2', 3e9, 'refine', '#2dffa0', { refine: 2 });
+gen('global3', '우주 문명 단계 II', '모든 생산 x2', 1e12, 'star', '#ff9df5', { global: 2 });
+gen('click4', '초끈 진동기', '클릭 + 초당 채굴량의 4%', 5e11, 'pick', '#fff1a8', { clickPct: 0.04 });
+gen('refine3', '항성 정제소', '모든 광석 가치 x2', 3e13, 'refine', '#8ff4ff', { refine: 2 });
+gen('global4', '우주 문명 단계 III', '모든 생산 x3', 1e15, 'star', '#fff1a8', { global: 3 });
+const UP_MAP = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
+
+/* ---------- 업적 ---------- */
+const unitTotal = () => UNITS.reduce((a, u) => a + S.units[u.id], 0);
+const ACH = [
+  ['c1', '첫 곡괭이질', '클릭 1번', () => S.clicks >= 1],
+  ['c100', '손에 익음', '클릭 100번', () => S.clicks >= 100],
+  ['c1k', '광부의 손목', '클릭 1,000번', () => S.clicks >= 1000],
+  ['c10k', '강철 손가락', '클릭 10,000번', () => S.clicks >= 1e4],
+  ['c50k', '전설의 광부', '클릭 50,000번', () => S.clicks >= 5e4],
+  ['t1k', '첫 수입', '총 1,000 크레딧 채굴', () => S.total >= 1e3],
+  ['t1m', '백만장자', '총 1,000,000 크레딧 채굴', () => S.total >= 1e6],
+  ['t1b', '억만장자', '총 1,000,000,000 크레딧 채굴', () => S.total >= 1e9],
+  ['t1t', '조 단위 부자', '총 1조 크레딧 채굴', () => S.total >= 1e12],
+  ['t1q', '행성을 살 돈', '총 1,000조 크레딧 채굴', () => S.total >= 1e15],
+  ['t1x', '은하를 살 돈', '총 100경 크레딧 채굴', () => S.total >= 1e18],
+  ['b10', '파괴 입문', '소행성 10개 파괴', () => S.brokenAll >= 10],
+  ['b100', '소행성 사냥꾼', '소행성 100개 파괴', () => S.brokenAll >= 100],
+  ['b1k', '우주 청소부', '소행성 1,000개 파괴', () => S.brokenAll >= 1000],
+  ['u10', '작은 팀', '채굴 부대 10대', () => unitTotal() >= 10],
+  ['u100', '채굴 함대', '채굴 부대 100대', () => unitTotal() >= 100],
+  ['u500', '우주 군단', '채굴 부대 500대', () => unitTotal() >= 500],
+  ['o3', '황금을 찾아서', '황금 소행성 도달', () => S.maxOre >= 3],
+  ['o6', '별의 심장', '별의 심장 도달', () => S.maxOre >= 6],
+  ['o9', '우주의 끝', '퀘이사 핵 도달', () => S.maxOre >= 9],
+  ['k25', '리듬 타기', '콤보 25', () => S.bestCombo >= 25],
+  ['k100', '멈출 수 없어', '콤보 100', () => S.bestCombo >= 100],
+  ['k200', '광속 손가락', '콤보 200', () => S.bestCombo >= 200],
+  ['m1', '행운의 별', '황금 혜성 1번 잡기', () => S.comets >= 1],
+  ['m10', '혜성 수집가', '황금 혜성 10번 잡기', () => S.comets >= 10],
+  ['m50', '혜성 사냥꾼', '황금 혜성 50번 잡기', () => S.comets >= 50],
+  ['cr', '한 방', '치명타 100번', () => S.crits >= 100],
+  ['up20', '연구 중독', '연구 20개 완료', () => S.upgrades.length >= 20],
+  ['p1', '첫 초신성', '초신성 1번 폭발', () => S.prestiges >= 1],
+  ['p5', '별의 순환', '초신성 5번 폭발', () => S.prestiges >= 5],
+];
+
+/* ================= 상태 / 저장 ================= */
+const KEY = 'stellar-miner-v1';
+const fresh = () => ({
+  credits: 0, total: 0, runTotal: 0, clicks: 0, pick: 0, ore: 0, maxOre: 0, broken: 0, brokenAll: 0,
+  hp: null, maxHp: null,
+  units: Object.fromEntries(UNITS.map(u => [u.id, 0])),
+  upgrades: [], ach: [], shards: 0, prestiges: 0,
+  bestCombo: 0, comets: 0, crits: 0,
+  muted: false, last: Date.now(),
+});
+let S = fresh();
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    S = Object.assign(fresh(), d);
+    S.units = Object.assign(fresh().units, d.units || {});
+    S.ore = clamp(S.ore | 0, 0, ORES.length - 1);
+    if (d.runTotal == null) S.runTotal = S.total;        // 예전 저장 파일
+    if (d.brokenAll == null) S.brokenAll = S.broken;
+    S.maxOre = Math.max(S.maxOre, S.ore);
+    S.upgrades = (S.upgrades || []).filter(id => UP_MAP[id]);
+  } catch (e) { /* 저장소를 못 쓰면 새 게임 */ }
+}
+function save() {
+  S.last = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+}
+
+/* ================= 배율 계산 ================= */
+let M = {};
+function recalc() {
+  M = { unit: {}, clickPct: 0, crit: 0.1, critMult: 5, comboCap: 100, comboTime: 1, cometFreq: 1, boostTime: 20, cometReward: 1, breakMult: 1, refine: 1, global: 1, offline: false };
+  UNITS.forEach(u => { M.unit[u.id] = 1; });
+  for (const id of S.upgrades) {
+    const e = UP_MAP[id].eff;
+    if (e.unit) M.unit[e.unit] *= 2;
+    if (e.clickPct) M.clickPct += e.clickPct;
+    if (e.crit) M.crit += e.crit;
+    if (e.critMult) M.critMult += e.critMult;
+    if (e.comboCap) M.comboCap = Math.max(M.comboCap, e.comboCap);
+    if (e.comboTime) M.comboTime += e.comboTime;
+    if (e.cometFreq) M.cometFreq += e.cometFreq;
+    if (e.boostTime) M.boostTime += e.boostTime;
+    if (e.cometReward) M.cometReward *= e.cometReward;
+    if (e.breakMult) M.breakMult *= e.breakMult;
+    if (e.refine) M.refine *= e.refine;
+    if (e.global) M.global *= e.global;
+    if (e.offline) M.offline = true;
+  }
+  M.prestige = 1 + S.shards * 0.05;
+  M.ach = 1 + S.ach.length * 0.02;
+  M.all = M.global * M.prestige * M.ach;
+}
+
+let boostUntil = 0, combo = 0, comboTimer = 0, comboSum = 0, comboShow = 0, comboShowSum = 0;
+const boost = () => (performance.now() < boostUntil ? 7 : 1);
+const ore = () => ORES[S.ore];
+const oreVal = () => ore().mult * M.refine;
+const pickPower = lv => Math.floor((1 + lv) * Math.pow(1.08, lv));
+const basePick = () => pickPower(S.pick) * M.all;
+const baseMps = () => UNITS.reduce((a, u) => a + u.mps * S.units[u.id] * M.unit[u.id], 0) * M.all;
+const mps = () => baseMps() * boost();
+const comboMult = () => 1 + Math.min(combo, M.comboCap) * 0.02;
+const clickPower = () => (basePick() * comboMult() + baseMps() * M.clickPct) * boost();
+const bulk = (base, rate, n, q) => Math.ceil(base * Math.pow(rate, n) * (Math.pow(rate, q) - 1) / (rate - 1));
+const pickCost = q => bulk(20, 1.3, S.pick, q);
+const unitCost = (u, q) => bulk(u.base, 1.15, S.units[u.id], q);
+const shardGain = () => Math.floor(Math.sqrt(S.runTotal / 1e9));
+let qty = 1;
+
+// 숫자는 줄이지 않고 그대로: 1,234,567,890
+const NF = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 });
+function fmt(n) {
+  if (!isFinite(n)) return '∞';
+  if (n > 0 && n < 10 && n % 1) return n.toFixed(1);
+  return NF.format(Math.floor(n));
+}
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
+}
+function mulberry32(a) {
+  return () => {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const makeCanvas = (w, h = w) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; };
+
+/* ================= 스프라이트 ================= */
+const glowCache = new Map();
+function glow(color) {
+  if (glowCache.has(color)) return glowCache.get(color);
+  const c = makeCanvas(128), g = c.getContext('2d');
+  const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,1)');
+  gr.addColorStop(0.12, hexA(color, 1));
+  gr.addColorStop(0.4, hexA(color, 0.3));
+  gr.addColorStop(1, hexA(color, 0));
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  glowCache.set(color, c);
+  return c;
+}
+const FLARE = (() => {
+  const c = makeCanvas(256), g = c.getContext('2d');
+  g.translate(128, 128);
+  const core = g.createRadialGradient(0, 0, 0, 0, 0, 60);
+  core.addColorStop(0, 'rgba(255,255,255,1)'); core.addColorStop(.2, 'rgba(255,255,255,.5)'); core.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = core; g.beginPath(); g.arc(0, 0, 60, 0, TAU); g.fill();
+  for (let i = 0; i < 4; i++) {
+    g.rotate(Math.PI / 2);
+    const s = g.createLinearGradient(0, 0, 126, 0);
+    s.addColorStop(0, 'rgba(255,255,255,.95)'); s.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = s;
+    g.beginPath(); g.moveTo(0, -3.5); g.lineTo(126, 0); g.lineTo(0, 3.5); g.closePath(); g.fill();
+  }
+  return c;
+})();
+const GEM = (() => {
+  const c = makeCanvas(64), g = c.getContext('2d');
+  g.translate(32, 32);
+  const gl = g.createRadialGradient(0, 0, 0, 0, 0, 32);
+  gl.addColorStop(0, 'rgba(255,220,120,.7)'); gl.addColorStop(1, 'rgba(255,200,80,0)');
+  g.fillStyle = gl; g.fillRect(-32, -32, 64, 64);
+  g.fillStyle = '#ffd166';
+  g.beginPath(); g.moveTo(-9, -6); g.lineTo(9, -6); g.lineTo(13, -1); g.lineTo(0, 13); g.lineTo(-13, -1); g.closePath(); g.fill();
+  g.fillStyle = '#fff6d6';
+  g.beginPath(); g.moveTo(-9, -6); g.lineTo(9, -6); g.lineTo(13, -1); g.lineTo(-13, -1); g.closePath(); g.fill();
+  g.fillStyle = '#ffb347';
+  g.beginPath(); g.moveTo(-13, -1); g.lineTo(0, -1); g.lineTo(0, 13); g.closePath(); g.fill();
+  return c;
+})();
+function sprite(g, img, x, y, size, alpha = 1) {
+  if (alpha <= 0) return;
+  g.globalAlpha = alpha;
+  g.drawImage(img, x - size / 2, y - size / 2, size, size);
+}
+
+/* ================= 소리 ================= */
+let AC = null, noiseBuf = null;
+function audio() {
+  if (S.muted) return null;
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      noiseBuf = AC.createBuffer(1, AC.sampleRate * 0.6, AC.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    } catch (e) { return null; }
+  }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(f1, f2, dur, type = 'sine', vol = 0.15, delay = 0) {
+  const ac = audio(); if (!ac) return;
+  const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur, freq, q, vol, type = 'bandpass') {
+  const ac = audio(); if (!ac) return;
+  const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+  s.buffer = noiseBuf; f.type = type; f.frequency.value = freq; f.Q.value = q;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f).connect(g).connect(ac.destination); s.start(t); s.stop(t + dur);
+}
+const sfx = {
+  hit(crit) {
+    noise(0.07, rand(2200, 3200), 1.2, 0.35);
+    // 콤보가 쌓일수록 음이 조금씩 올라가요
+    const up = Math.min(combo, 120) * 6;
+    tone(crit ? 1900 + up : rand(1100, 1250) + up, crit ? 900 : 700, 0.09, 'triangle', crit ? 0.14 : 0.08);
+    if (crit) tone(2600, 2400, 0.25, 'sine', 0.07, 0.03);
+  },
+  break() { noise(0.7, 500, 0.6, 0.6, 'lowpass'); tone(140, 35, 0.6, 'sine', 0.35); },
+  buy() { tone(660, 660, 0.09, 'triangle', 0.09); tone(990, 990, 0.14, 'triangle', 0.09, 0.07); },
+  research() { [523, 659, 784, 1046].forEach((f, i) => tone(f, f, 0.18, 'triangle', 0.08, i * 0.05)); },
+  comet() { [880, 1108, 1318, 1760].forEach((f, i) => tone(f, f, 0.22, 'sine', 0.09, i * 0.06)); },
+  explore() { [330, 440, 554, 660, 880].forEach((f, i) => tone(f, f * 1.01, 0.35, 'triangle', 0.08, i * 0.08)); },
+  ach() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, f, 0.3, 'sine', 0.08, i * 0.09)); },
+  nova() { noise(2, 300, 0.4, 0.7, 'lowpass'); tone(60, 30, 2, 'sine', 0.4); [440, 554, 659, 880, 1108].forEach((f, i) => tone(f, f, 0.8, 'triangle', 0.06, 0.4 + i * 0.12)); },
+};
+
+/* ================= 배경 우주 ================= */
+const sky = $('#sky'), sx = sky.getContext('2d');
+let SW = 0, SH = 0, SDPR = 1, skyStatic = null, twinkles = [], shootings = [];
+let parX = 0, parY = 0, tParX = 0, tParY = 0;
+const SKY_PAD = 40;
+
+function drawPlanet(g, x, y, r) {
+  g.save(); g.translate(x, y);
+  const atm = g.createRadialGradient(0, 0, r * 0.9, 0, 0, r * 1.3);
+  atm.addColorStop(0, 'rgba(130,120,255,.35)'); atm.addColorStop(1, 'rgba(130,120,255,0)');
+  g.fillStyle = atm; g.beginPath(); g.arc(0, 0, r * 1.3, 0, TAU); g.fill();
+  const ring = (from, to) => {
+    g.save(); g.rotate(-0.32);
+    for (let k = 0; k < 7; k++) {
+      g.strokeStyle = `rgba(${200 - k * 8},${180 + k * 6},255,${0.06 + (k % 3) * 0.05})`;
+      g.lineWidth = r * 0.035;
+      g.beginPath(); g.ellipse(0, 0, r * (1.45 + k * 0.07), r * (0.3 + k * 0.015), 0, from, to); g.stroke();
+    }
+    g.restore();
+  };
+  ring(Math.PI, TAU);
+  g.save();
+  g.beginPath(); g.arc(0, 0, r, 0, TAU); g.clip();
+  g.rotate(-0.32);
+  const bands = g.createLinearGradient(0, -r, 0, r);
+  const pal = ['#2b2466', '#4b3d9a', '#6d55c0', '#3a2f80', '#8a6ad0', '#2f2870', '#5a46ad', '#241e58'];
+  const prng = mulberry32(42);
+  for (let i = 0; i <= 14; i++) bands.addColorStop(i / 14, pal[prng() * pal.length | 0]);
+  g.fillStyle = bands; g.fillRect(-r * 1.5, -r * 1.5, r * 3, r * 3);
+  for (let i = 0; i < 40; i++) {
+    g.fillStyle = `rgba(255,255,255,${prng() * 0.05})`;
+    g.fillRect(-r * 1.5, -r + prng() * r * 2, r * 3, prng() * r * 0.04);
+  }
+  g.rotate(0.32);
+  const sh = g.createRadialGradient(r * 0.45, -r * 0.5, r * 0.1, r * 0.2, -r * 0.2, r * 1.35);
+  sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(0.5, 'rgba(2,2,12,.35)'); sh.addColorStop(1, 'rgba(2,2,10,.95)');
+  g.fillStyle = sh; g.fillRect(-r, -r, r * 2, r * 2);
+  g.restore();
+  g.strokeStyle = 'rgba(190,200,255,.55)'; g.lineWidth = 2;
+  g.beginPath(); g.arc(0, 0, r, -2.0, -0.1); g.stroke();
+  ring(0, Math.PI);
+  g.restore();
+}
+
+function buildSky() {
+  SDPR = Math.min(window.devicePixelRatio || 1, 1.5);
+  SW = innerWidth; SH = innerHeight;
+  sky.width = Math.round(SW * SDPR); sky.height = Math.round(SH * SDPR);
+  const PW = SW + SKY_PAD * 2, PH = SH + SKY_PAD * 2;
+  skyStatic = makeCanvas(PW * SDPR, PH * SDPR);
+  const g = skyStatic.getContext('2d');
+  g.scale(SDPR, SDPR);
+  const rnd = mulberry32(1234);
+  const bg = g.createLinearGradient(0, 0, PW, PH);
+  bg.addColorStop(0, '#04040f'); bg.addColorStop(0.5, '#060820'); bg.addColorStop(1, '#0a0618');
+  g.fillStyle = bg; g.fillRect(0, 0, PW, PH);
+  const nb = makeCanvas(320, 200), n = nb.getContext('2d');
+  const cols = ['120,60,230', '40,110,255', '255,70,180', '0,190,255', '90,40,200', '255,120,90'];
+  for (let i = 0; i < 40; i++) {
+    const x = rnd() * 320, y = rnd() * 200, r = 15 + rnd() * 85, c = cols[rnd() * cols.length | 0], a = 0.04 + rnd() * 0.15;
+    const gr = n.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, `rgba(${c},${a})`); gr.addColorStop(1, `rgba(${c},0)`);
+    n.fillStyle = gr; n.beginPath(); n.arc(x, y, r, 0, TAU); n.fill();
+  }
+  for (let i = 0; i < 10; i++) {
+    const x = rnd() * 320, y = rnd() * 200, r = 10 + rnd() * 40;
+    const gr = n.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(2,2,8,.45)'); gr.addColorStop(1, 'rgba(2,2,8,0)');
+    n.fillStyle = gr; n.beginPath(); n.arc(x, y, r, 0, TAU); n.fill();
+  }
+  g.drawImage(nb, 0, 0, PW, PH);
+  g.save();
+  g.translate(PW / 2, PH / 2); g.rotate(-0.45);
+  const band = Math.max(PW, PH);
+  const bgr = g.createLinearGradient(0, -PH * 0.25, 0, PH * 0.25);
+  bgr.addColorStop(0, 'rgba(170,160,255,0)'); bgr.addColorStop(0.5, 'rgba(170,160,255,.07)'); bgr.addColorStop(1, 'rgba(170,160,255,0)');
+  g.fillStyle = bgr; g.fillRect(-band, -PH * 0.25, band * 2, PH * 0.5);
+  for (let i = 0; i < 2600; i++) {
+    const x = (rnd() * 2 - 1) * band, y = ((rnd() + rnd() + rnd()) / 3 - 0.5) * PH * 0.45;
+    g.fillStyle = `rgba(220,225,255,${rnd() * 0.5})`;
+    g.fillRect(x, y, 0.7, 0.7);
+  }
+  g.restore();
+  const count = Math.round(PW * PH / 1400);
+  for (let i = 0; i < count; i++) {
+    const s = rnd() < 0.92 ? 0.6 + rnd() * 0.6 : 1.3 + rnd() * 0.6;
+    g.fillStyle = rnd() < 0.15 ? `rgba(255,215,170,${0.3 + rnd() * 0.6})` : rnd() < 0.3 ? `rgba(170,200,255,${0.3 + rnd() * 0.6})` : `rgba(255,255,255,${0.2 + rnd() * 0.7})`;
+    g.fillRect(rnd() * PW, rnd() * PH, s, s);
+  }
+  drawPlanet(g, PW * 0.12, PH * 1.02, Math.min(PW, PH) * 0.36);
+  twinkles = [];
+  const tc = Math.round(clamp(SW * SH / 14000, 40, 140));
+  for (let i = 0; i < tc; i++) {
+    twinkles.push({
+      x: Math.random() * PW - SKY_PAD, y: Math.random() * PH - SKY_PAD,
+      size: rand(5, 13), tw: rand(0.6, 2.2), ph: rand(0, TAU), depth: rand(8, 26),
+      img: glow(Math.random() < 0.2 ? '#ffd9a8' : Math.random() < 0.4 ? '#a8c8ff' : '#ffffff'),
+      flare: Math.random() < 0.12,
+    });
+  }
+}
+
+function drawSky(t) {
+  parX += (tParX - parX) * 0.05; parY += (tParY - parY) * 0.05;
+  const time = t / 1000;
+  sx.setTransform(1, 0, 0, 1, 0, 0);
+  sx.globalAlpha = 1;
+  sx.drawImage(skyStatic, Math.round((-SKY_PAD + parX * 8) * SDPR), Math.round((-SKY_PAD + parY * 8) * SDPR));
+  sx.setTransform(SDPR, 0, 0, SDPR, 0, 0);
+  sx.globalCompositeOperation = 'lighter';
+  for (const s of twinkles) {
+    const a = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(time * s.tw + s.ph));
+    const x = s.x + parX * s.depth, y = s.y + parY * s.depth;
+    sprite(sx, s.img, x, y, s.size, a);
+    if (s.flare) sprite(sx, FLARE, x, y, s.size * 3.2, a * 0.6);
+  }
+  if (Math.random() < 0.004 && shootings.length < 2) {
+    shootings.push({ x: rand(0, SW), y: rand(0, SH * 0.5), vx: rand(500, 900) * (Math.random() < .5 ? -1 : 1), vy: rand(200, 400), life: 1 });
+  }
+  sx.globalAlpha = 1;
+  sx.lineWidth = 1.5;
+  for (const s of shootings) {
+    s.life -= 0.022; s.x += s.vx * 0.016; s.y += s.vy * 0.016;
+    const gr = sx.createLinearGradient(s.x, s.y, s.x - s.vx * 0.12, s.y - s.vy * 0.12);
+    gr.addColorStop(0, `rgba(255,255,255,${Math.max(0, s.life)})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    sx.strokeStyle = gr;
+    sx.beginPath(); sx.moveTo(s.x, s.y); sx.lineTo(s.x - s.vx * 0.12, s.y - s.vy * 0.12); sx.stroke();
+  }
+  sx.globalCompositeOperation = 'source-over';
+  shootings = shootings.filter(s => s.life > 0);
+}
+addEventListener('pointermove', e => {
+  tParX = (e.clientX / innerWidth - 0.5) * -2;
+  tParY = (e.clientY / innerHeight - 0.5) * -2;
+});
+
+/* ================= 게임 화면 ================= */
+const stage = $('#stage'), game = $('#game'), gx = game.getContext('2d');
+let W = 0, H = 0, DPR = 1, R = 100, CX = 0, CY = 0;
+let rock = null, nextRock = null, rockSeed = (Math.random() * 1e9) | 0, rockRot = 0;
+let rc = null, rcx = null, haloImg = null, raysImg = null;
+let punch = 0, shake = 0, flash = 0, spawnT = 1;
+let particles = [], texts = [], drones = [], debris = [], debrisImgs = [], comet = null, cometTimer = rand(25, 45);
+let mouse = { x: 0, y: 0, in: false }, swing = 0, touchShow = 0, incomeT = 0;
+let gemTarget = { x: 0, y: -40 };
+
+function resize() {
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = r.width; H = r.height;
+  game.width = Math.round(W * DPR); game.height = Math.round(H * DPR);
+  R = Math.max(60, Math.min(W * (W < 600 ? 0.3 : 0.22), H * 0.23));
+  CX = W / 2; CY = H * 0.53;
+  rock = buildRock(rockSeed);
+  nextRock = null; scheduleNextRock();
+  rc = makeCanvas(rock.tex.width); rcx = rc.getContext('2d');
+  buildOreFx();
+  buildDrones();
+  buildDebris();
+  updateGemTarget();
+}
+function updateGemTarget() {
+  const cb = $('#creditBox').getBoundingClientRect(), gr = game.getBoundingClientRect();
+  gemTarget = { x: cb.left + 40 - gr.left, y: cb.top + cb.height / 2 - gr.top };
+}
+const rockKey = () => `${S.ore}|${R}|${DPR}`;
+
+/* ---------- 소행성: 무늬(회전) · 빛(고정) · 발광(회전) ---------- */
+function buildRock(seed) {
+  const o = ore(), rnd = mulberry32(seed);
+  const size = R * 2.7, px = Math.ceil(size * DPR);
+  const layer = () => { const c = makeCanvas(px), g = c.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, px / 2, px / 2); return [c, g]; };
+
+  const N = 96, ph = [rnd() * 7, rnd() * 7, rnd() * 7, rnd() * 7], pts = [];
+  for (let i = 0; i < N; i++) {
+    const a = i / N * TAU;
+    const k = 1 + 0.07 * Math.sin(2 * a + ph[0]) + 0.05 * Math.sin(3 * a + ph[1]) + 0.025 * Math.sin(7 * a + ph[2]) + 0.012 * Math.sin(15 * a + ph[3]);
+    pts.push([Math.cos(a) * R * k, Math.sin(a) * R * k]);
+  }
+  const path = g => { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); };
+
+  const [tex, g] = layer();
+  g.save(); path(g); g.clip();
+  const gr = g.createRadialGradient(0, 0, 0, 0, 0, R * 1.15);
+  gr.addColorStop(0, o.base[0]); gr.addColorStop(0.65, o.base[1]); gr.addColorStop(1, o.base[2]);
+  g.fillStyle = gr; g.fillRect(-R * 1.4, -R * 1.4, R * 2.8, R * 2.8);
+  for (let i = 0; i < 30; i++) {
+    const x = (rnd() * 2 - 1) * R, y = (rnd() * 2 - 1) * R, r = R * (0.08 + rnd() * 0.3), light = rnd() < 0.45;
+    const bg = g.createRadialGradient(x, y, 0, x, y, r);
+    bg.addColorStop(0, light ? 'rgba(255,255,255,.09)' : 'rgba(0,0,0,.22)'); bg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = bg; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+  }
+  for (let i = 0; i < 2600; i++) {
+    const x = (rnd() * 2 - 1) * R * 1.1, y = (rnd() * 2 - 1) * R * 1.1, s = rnd() * 1.6 + 0.3;
+    g.fillStyle = rnd() < 0.5 ? `rgba(255,255,255,${rnd() * 0.1})` : `rgba(0,0,0,${rnd() * 0.25})`;
+    g.fillRect(x, y, s, s);
+  }
+  for (let i = 0; i < 12; i++) {
+    const a = rnd() * TAU, d = Math.sqrt(rnd()) * R * 0.8, x = Math.cos(a) * d, y = Math.sin(a) * d, r = R * (0.035 + rnd() * 0.13);
+    const cg = g.createRadialGradient(x, y, 0, x, y, r * 1.15);
+    cg.addColorStop(0, 'rgba(0,0,0,.5)'); cg.addColorStop(0.7, 'rgba(0,0,0,.3)'); cg.addColorStop(0.86, 'rgba(255,255,255,.12)'); cg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = cg; g.beginPath(); g.arc(x, y, r * 1.15, 0, TAU); g.fill();
+  }
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  const veinSeed = (rnd() * 1e9) | 0;
+  const drawVeins = (ctx, style, width) => {
+    const vr = mulberry32(veinSeed);
+    for (let i = 0; i < 6 + S.ore; i++) {
+      let x = (vr() * 2 - 1) * R * .7, y = (vr() * 2 - 1) * R * .7, a = vr() * TAU;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let j = 0; j < 8; j++) { a += (vr() - .5) * 1.1; x += Math.cos(a) * R * .09; y += Math.sin(a) * R * .09; ctx.lineTo(x, y); }
+      ctx.strokeStyle = style; ctx.lineWidth = width * (0.6 + vr() * 0.8); ctx.stroke();
+    }
+  };
+  drawVeins(g, hexA(o.vein, 0.3), 3.5);
+  g.restore();
+  path(g); g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 1.5; g.stroke();
+
+  const [emis, e] = layer();
+  e.save(); path(e); e.clip();
+  e.lineJoin = 'round'; e.lineCap = 'round';
+  e.shadowColor = o.vein; e.shadowBlur = 8 * DPR;
+  drawVeins(e, hexA(o.vein, 0.75), 1.3);
+  e.shadowBlur = 0;
+  const sparkles = [];
+  const clusters = 4 + Math.min(S.ore, 7);
+  for (let c = 0; c < clusters; c++) {
+    const a = rnd() * TAU, d = Math.sqrt(rnd()) * R * 0.72, cx = Math.cos(a) * d, cy = Math.sin(a) * d;
+    const n = 3 + (rnd() * 4 | 0), baseAng = rnd() * TAU;
+    const halo = e.createRadialGradient(cx, cy, 0, cx, cy, R * 0.22);
+    halo.addColorStop(0, hexA(o.vein, 0.35)); halo.addColorStop(1, hexA(o.vein, 0));
+    e.fillStyle = halo; e.beginPath(); e.arc(cx, cy, R * 0.22, 0, TAU); e.fill();
+    for (let k = 0; k < n; k++) {
+      const ang = baseAng + (rnd() - .5) * 1.6, len = R * (0.06 + rnd() * 0.12), wid = len * 0.32;
+      const ux = Math.cos(ang), uy = Math.sin(ang), qx = -uy, qy = ux;
+      const bx = cx + (rnd() - .5) * R * .05, by = cy + (rnd() - .5) * R * .05;
+      const tip = [bx + ux * len, by + uy * len];
+      const mL = [bx + ux * len * .7 + qx * wid, by + uy * len * .7 + qy * wid];
+      const mR = [bx + ux * len * .7 - qx * wid, by + uy * len * .7 - qy * wid];
+      const bL = [bx + qx * wid * .7, by + qy * wid * .7], bR = [bx - qx * wid * .7, by - qy * wid * .7];
+      const shard = () => { e.beginPath(); e.moveTo(bL[0], bL[1]); e.lineTo(mL[0], mL[1]); e.lineTo(tip[0], tip[1]); e.lineTo(mR[0], mR[1]); e.lineTo(bR[0], bR[1]); e.closePath(); };
+      const cg = e.createLinearGradient(bx, by, tip[0], tip[1]);
+      cg.addColorStop(0, hexA(o.vein, 0.45)); cg.addColorStop(.6, o.vein); cg.addColorStop(1, '#ffffff');
+      e.shadowColor = o.vein; e.shadowBlur = 14 * DPR;
+      e.fillStyle = cg; shard(); e.fill();
+      e.shadowBlur = 0;
+      e.fillStyle = 'rgba(255,255,255,.45)';
+      e.beginPath(); e.moveTo(bx, by); e.lineTo(mL[0], mL[1]); e.lineTo(tip[0], tip[1]); e.closePath(); e.fill();
+      e.strokeStyle = 'rgba(0,0,0,.25)'; e.lineWidth = 0.6; shard(); e.stroke();
+      if (rnd() < 0.5) sparkles.push({ x: tip[0], y: tip[1], ph: rnd() * TAU, sp: 0.8 + rnd() * 1.5 });
+    }
+  }
+  e.restore();
+
+  const [light, l] = layer();
+  const sh = l.createRadialGradient(-R * .42, -R * .48, R * .1, -R * .25, -R * .28, R * 1.5);
+  sh.addColorStop(0, 'rgba(255,248,235,.22)'); sh.addColorStop(0.28, 'rgba(0,0,0,0)');
+  sh.addColorStop(0.55, 'rgba(4,6,22,.45)'); sh.addColorStop(0.8, 'rgba(2,3,14,.8)'); sh.addColorStop(1, 'rgba(1,2,8,.95)');
+  l.fillStyle = sh; l.fillRect(-size / 2, -size / 2, size, size);
+  const rim = (color, a, from, to) => {
+    const [c2, r2] = layer();
+    const rg = r2.createRadialGradient(0, 0, R * 0.78, 0, 0, R * 1.14);
+    rg.addColorStop(0, hexA(color, 0)); rg.addColorStop(0.62, hexA(color, a)); rg.addColorStop(1, hexA(color, 0));
+    r2.fillStyle = rg; r2.fillRect(-size / 2, -size / 2, size, size);
+    r2.globalCompositeOperation = 'destination-in';
+    const mg = r2.createLinearGradient(from[0] * R, from[1] * R, to[0] * R, to[1] * R);
+    mg.addColorStop(0, 'rgba(0,0,0,0)'); mg.addColorStop(0.55, 'rgba(0,0,0,0)'); mg.addColorStop(1, 'rgba(0,0,0,1)');
+    r2.fillStyle = mg; r2.fillRect(-size / 2, -size / 2, size, size);
+    l.setTransform(1, 0, 0, 1, 0, 0); l.drawImage(c2, 0, 0); l.setTransform(DPR, 0, 0, DPR, px / 2, px / 2);
+  };
+  rim(o.vein, 0.85, [-1, -1], [1, 1]);
+  rim('#ffffff', 0.5, [1, 1], [-1, -1]);
+
+  const cracks = [];
+  for (let i = 0; i < 8; i++) {
+    let a = rnd() * TAU, x = Math.cos(a) * R * rnd() * .2, y = Math.sin(a) * R * rnd() * .2;
+    const seg = [[x, y]];
+    for (let j = 0; j < 11; j++) {
+      a += (rnd() - .5) * .9; x += Math.cos(a) * R * .1; y += Math.sin(a) * R * .1;
+      if (Math.hypot(x, y) > R * .97) break;
+      seg.push([x, y]);
+    }
+    cracks.push(seg);
+  }
+  return { tex, emis, light, size, pts, cracks, sparkles, key: rockKey() };
+}
+
+// 광석 색에 맞춘 후광 · 빛줄기
+function buildOreFx() {
+  const v = ore().vein;
+  haloImg = makeCanvas(256);
+  let g = haloImg.getContext('2d');
+  const gr = g.createRadialGradient(128, 128, 28, 128, 128, 128);
+  gr.addColorStop(0, hexA(v, 0.35)); gr.addColorStop(0.35, hexA(v, 0.12)); gr.addColorStop(1, hexA(v, 0));
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+
+  raysImg = makeCanvas(512);
+  g = raysImg.getContext('2d');
+  g.translate(256, 256);
+  const rnd = mulberry32(S.ore + 3);
+  const rg = g.createRadialGradient(0, 0, 30, 0, 0, 256);
+  rg.addColorStop(0, hexA(v, 0.5)); rg.addColorStop(0.5, hexA(v, 0.12)); rg.addColorStop(1, hexA(v, 0));
+  g.fillStyle = rg;
+  for (let i = 0; i < 18; i++) {
+    const a = i / 18 * TAU + rnd() * 0.2, w = 0.03 + rnd() * 0.07;
+    g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 256, a - w, a + w); g.closePath(); g.fill();
+  }
+}
+
+let nextSeed = 0, nextTimer = 0;
+function scheduleNextRock() {
+  clearTimeout(nextTimer);
+  nextTimer = setTimeout(() => {
+    nextSeed = (Math.random() * 1e9) | 0;
+    nextRock = buildRock(nextSeed);
+  }, 400);
+}
+
+function buildDebris() {
+  debrisImgs = [];
+  for (let i = 0; i < 4; i++) {
+    const rnd = mulberry32(99 + i), r = 22, c = makeCanvas(64), g = c.getContext('2d');
+    g.translate(32, 32);
+    g.beginPath();
+    for (let k = 0; k < 14; k++) {
+      const a = k / 14 * TAU, rr = r * (0.75 + rnd() * 0.3);
+      k ? g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : g.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    g.closePath();
+    const gr = g.createRadialGradient(-r * .4, -r * .45, 1, 0, 0, r * 1.1);
+    gr.addColorStop(0, '#9aa0b8'); gr.addColorStop(0.5, '#4a4f66'); gr.addColorStop(1, '#0d0f1c');
+    g.fillStyle = gr; g.fill();
+    for (let k = 0; k < 4; k++) {
+      g.fillStyle = 'rgba(0,0,0,.3)';
+      g.beginPath(); g.arc((rnd() - .5) * r, (rnd() - .5) * r, 2 + rnd() * 4, 0, TAU); g.fill();
+    }
+    debrisImgs.push(c);
+  }
+  debris = [];
+  const n = W < 600 ? 5 : 9;
+  for (let i = 0; i < n; i++) {
+    const depth = Math.random();
+    debris.push({
+      x: rand(0, W), y: rand(0, H), vx: rand(-8, 8) * (0.4 + depth), vy: rand(-4, 4),
+      rot: rand(0, TAU), vr: rand(-0.4, 0.4), img: debrisImgs[i % 4],
+      size: 8 + depth * 26, alpha: 0.35 + depth * 0.5, front: depth > 0.8,
+    });
+  }
+}
+
+function buildDrones() {
+  drones = [];
+  const maxX = W * 0.46 / R;
+  UNITS.forEach((u, k) => {
+    const n = Math.min(S.units[u.id], 4);
+    for (let j = 0; j < n; j++) {
+      drones.push({
+        k, u, img: glow(u.color),
+        ang: j / n * TAU + k * 1.1,
+        spd: (0.25 + k * 0.05) * (k % 2 ? -1 : 1),
+        orbit: Math.min(1.4 + k * 0.11, maxX),
+        tilt: 0.36 + (k % 4) * 0.035,
+        fire: rand(0.2, 2), beam: 0, size: 3.2 + Math.min(k, 7) * 0.6,
+      });
+    }
+  });
+}
+
+function addCredits(n) { S.credits += n; S.total += n; S.runTotal += n; }
+
+function damage(d) {
+  S.hp -= d;
+  if (S.hp <= 0) breakRock();
+}
+function rollMaxHp() {
+  // 채굴력이 커져도 소행성이 몇 초는 버티도록
+  const power = basePick() * 3 + baseMps() * 1.5;
+  return Math.round(Math.max(ore().hp * (1 + S.broken * 0.12), power * 4));
+}
+function breakRock() {
+  const bonus = S.maxHp * oreVal() * 0.5 * M.breakMult * boost();
+  addCredits(bonus);
+  S.broken++; S.brokenAll++;
+  explode(CX, CY);
+  floatText(CX, CY - R * 0.15, `+${fmt(bonus)}`, ore().vein, 34, true);
+  floatText(CX, CY - R * 0.15 - 38, '소행성 파괴!', '#ffffff', 18);
+  for (let i = 0; i < 14; i++) spawnGem(CX + rand(-R * .6, R * .6), CY + rand(-R * .6, R * .6));
+  sfx.break();
+  newRock();
+}
+function newRock() {
+  S.maxHp = rollMaxHp();
+  S.hp = S.maxHp;
+  if (nextRock && nextRock.key === rockKey()) {
+    rock = nextRock; rockSeed = nextSeed;
+  } else {
+    rockSeed = (Math.random() * 1e9) | 0;
+    rock = buildRock(rockSeed);
+  }
+  nextRock = null; scheduleNextRock();
+  spawnT = 0;
+}
+
+/* ---------- 파티클 ---------- */
+function spawnGem(x, y) {
+  if (particles.length > 420) return;
+  const cx = (x + gemTarget.x) / 2 + rand(-120, 120), cy = Math.min(y, gemTarget.y) - rand(40, 160);
+  particles.push({ t: 'gem', x, y, x0: x, y0: y, cx, cy, u: 0, spd: rand(1.1, 1.6), life: 1, size: rand(14, 20), rot: rand(0, TAU), vr: rand(-6, 6) });
+}
+function burst(x, y, n, power, crit) {
+  const o = ore();
+  for (let i = 0; i < n; i++) {
+    const a = rand(0, TAU), s = rand(60, 260) * power;
+    particles.push({ t: 'chunk', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, decay: rand(0.8, 1.4), rot: rand(0, TAU), vr: rand(-8, 8), size: rand(2, 5.5) * power, c: Math.random() < .5 ? o.base[0] : o.base[1] });
+  }
+  for (let i = 0; i < n * (crit ? 2 : 1); i++) {
+    const a = rand(0, TAU), s = rand(120, 480) * power;
+    particles.push({ t: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, decay: rand(1.6, 3), c: crit ? '#ffe9a8' : o.vein });
+  }
+  particles.push({ t: 'flare', x, y, life: 1, decay: crit ? 3 : 4.5, size: crit ? 170 : 90, c: crit ? '#ffd166' : o.vein });
+  if (crit) particles.push({ t: 'ring', x, y, r: 10, life: 1, decay: 3, c: '#ffd166', grow: 0.6 });
+}
+function explode(x, y) {
+  burst(x, y, 60, 1.8, true);
+  for (let i = 0; i < 26; i++) {
+    const a = rand(0, TAU), s = rand(80, 300);
+    particles.push({ t: 'chunk', x: x + Math.cos(a) * R * .5, y: y + Math.sin(a) * R * .5, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, decay: rand(.5, .9), rot: rand(0, TAU), vr: rand(-5, 5), size: rand(R * .08, R * .2), c: ore().base[1] });
+  }
+  particles.push({ t: 'ring', x, y, r: R * .6, life: 1, decay: 1.6, c: ore().vein, grow: 1.4 });
+  particles.push({ t: 'ring', x, y, r: R * .3, life: 1, decay: 1.1, c: '#ffffff', grow: 1.4 });
+  particles.push({ t: 'flare', x, y, life: 1, decay: 1.8, size: R * 4, c: ore().vein });
+  shake = 18; flash = 1;
+}
+function floatText(x, y, text, color, size = 18, pop = false, life = 1) {
+  texts.push({ x, y, vy: -60, life, text, color, size, pop });
+  if (texts.length > 22) texts.shift();
+}
+
+/* ---------- 클릭 ---------- */
+function hit(x, y) {
+  if (comboTimer > 0) combo++; else { combo = 1; comboSum = 0; }
+  comboTimer = M.comboTime;
+  if (combo > S.bestCombo) S.bestCombo = combo;
+  let p = clickPower();
+  const crit = Math.random() < M.crit;
+  if (crit) { p *= M.critMult; S.crits++; }
+  const gain = p * oreVal();
+  addCredits(gain);
+  comboSum += gain;
+  S.clicks++;
+  punch = 1; shake = Math.max(shake, crit ? 9 : 4); flash = Math.max(flash, crit ? 0.6 : 0.3);
+  burst(x, y, crit ? 16 : 9, crit ? 1.3 : 1, crit);
+  // 연타 중에는 숫자를 작게 흩뿌리고, 큰 숫자는 콤보 합계로 보여 줌
+  const busy = combo > 3;
+  floatText(x + rand(-60, 60) * (busy ? 1 : 0.3), y - rand(10, 50), `+${fmt(gain)}`, crit ? '#ffd166' : '#ffffff', crit ? (busy ? 20 : 28) : (busy ? 14 : 19), crit, busy ? 0.55 : 1);
+  if (crit && !busy) floatText(x, y - 46, `치명타 x${M.critMult}!`, '#ff6bd6', 16);
+  for (let i = 0; i < (crit ? 5 : 2); i++) spawnGem(x, y);
+  sfx.hit(crit);
+  damage(p);
+  hideHint();
+  bumpCredits();
+}
+
+game.addEventListener('pointerdown', e => {
+  const r = game.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  mouse.x = x; mouse.y = y;
+  if (e.pointerType !== 'mouse') touchShow = 0.45;
+  swing = 1;
+  if (comet && Math.hypot(x - comet.x, y - comet.y) < 46) { catchComet(); return; }
+  if (Math.hypot(x - CX, y - CY) < R * 1.25 && spawnT > 0.3) hit(x, y);
+});
+game.addEventListener('pointermove', e => {
+  const r = game.getBoundingClientRect();
+  mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; mouse.in = e.pointerType === 'mouse';
+});
+game.addEventListener('pointerleave', () => { mouse.in = false; });
+
+/* ---------- 황금 혜성 ---------- */
+function spawnComet() {
+  const fromLeft = Math.random() < 0.5;
+  comet = {
+    x: fromLeft ? -40 : W + 40, y: rand(H * 0.12, H * 0.45),
+    vx: (fromLeft ? 1 : -1) * rand(W / 7, W / 5), vy: rand(-10, 25), trail: 0,
+  };
+}
+function catchComet() {
+  const x = comet.x, y = comet.y;
+  comet = null;
+  S.comets++;
+  sfx.comet();
+  for (let i = 0; i < 50; i++) {
+    const a = rand(0, TAU), s = rand(80, 420);
+    particles.push({ t: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, decay: rand(1, 2), c: Math.random() < .5 ? '#ffd166' : '#fff3c4' });
+  }
+  particles.push({ t: 'ring', x, y, r: 20, life: 1, decay: 1.4, c: '#ffd166', grow: 1.4 });
+  particles.push({ t: 'flare', x, y, life: 1, decay: 1.5, size: 300, c: '#ffd166' });
+  for (let i = 0; i < 12; i++) spawnGem(x + rand(-20, 20), y + rand(-20, 20));
+  if (Math.random() < 0.5 && baseMps() > 0) {
+    boostUntil = performance.now() + M.boostTime * 1000;
+    toast(`☄️ 황금 혜성! ${M.boostTime}초 동안 모든 채굴 <b style="color:#ffd166">7배</b>`, 'gold');
+    floatText(x, y, '부스트 x7!', '#ffd166', 28, true);
+  } else {
+    const gain = Math.max(baseMps() * oreVal() * 90, basePick() * oreVal() * 40) * M.cometReward;
+    addCredits(gain);
+    toast(`☄️ 황금 혜성을 잡았어요! <b style="color:#ffd166">+${fmt(gain)}</b> 크레딧`, 'gold');
+    floatText(x, y, `+${fmt(gain)}`, '#ffd166', 28, true);
+  }
+  bumpCredits();
+}
+
+/* ---------- 곡괭이 ---------- */
+function drawPick(g, x, y, ang, sc) {
+  const tier = pickTier();
+  g.save();
+  g.translate(x, y); g.rotate(ang); g.scale(sc, sc); g.translate(38, -12);
+  g.globalCompositeOperation = 'lighter';
+  sprite(g, glow(tier.color), 0, -2, 110, 0.35);
+  g.globalCompositeOperation = 'source-over';
+  g.globalAlpha = 1;
+  const hg = g.createLinearGradient(-4, 0, 4, 0);
+  hg.addColorStop(0, '#1d2236'); hg.addColorStop(.5, '#5a6390'); hg.addColorStop(1, '#151a2b');
+  g.fillStyle = hg;
+  g.beginPath(); g.roundRect(-4, -4, 8, 84, 4); g.fill();
+  g.fillStyle = hexA(tier.color, .85);
+  for (let i = 0; i < 4; i++) g.fillRect(-4, 56 + i * 6, 8, 2);
+  const mg = g.createLinearGradient(0, -22, 0, 14);
+  mg.addColorStop(0, '#ffffff'); mg.addColorStop(.35, '#b9c4e0'); mg.addColorStop(.6, '#6f7b9c'); mg.addColorStop(1, '#2d344d');
+  g.fillStyle = mg;
+  g.beginPath(); g.moveTo(-38, 12); g.quadraticCurveTo(0, -24, 38, 12); g.quadraticCurveTo(0, -6, -38, 12); g.closePath(); g.fill();
+  g.strokeStyle = tier.color; g.lineWidth = 1.6;
+  g.beginPath(); g.moveTo(-38, 12); g.quadraticCurveTo(0, -24, 38, 12); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(-24, -1); g.quadraticCurveTo(0, -17, 20, -3); g.stroke();
+  g.fillStyle = '#20263d';
+  g.beginPath(); g.roundRect(-7, -12, 14, 18, 3); g.fill();
+  g.fillStyle = tier.color;
+  g.beginPath(); g.arc(0, -3, 2.6, 0, TAU); g.fill();
+  g.restore();
+}
+
+/* ---------- 그리기 ---------- */
+function dronePos(d) {
+  return [CX + Math.cos(d.ang) * R * d.orbit, CY + Math.sin(d.ang) * R * d.orbit * d.tilt];
+}
+function drawDrone(d, back) {
+  const [x, y] = dronePos(d);
+  const depth = (Math.sin(d.ang) + 1) / 2;
+  const s = d.size * (0.7 + depth * 0.5);
+  gx.globalCompositeOperation = 'lighter';
+  // 엔진 꼬리
+  const tx0 = -Math.sin(d.ang) * Math.sign(d.spd), ty0 = Math.cos(d.ang) * d.tilt * Math.sign(d.spd);
+  gx.globalAlpha = back ? 0.2 : 0.45; gx.strokeStyle = d.u.color; gx.lineWidth = s * 0.9;
+  gx.beginPath(); gx.moveTo(x, y); gx.lineTo(x - tx0 * s * 6, y - ty0 * s * 6); gx.stroke();
+  if (d.beam > 0) {
+    const bx = CX + (x - CX) * 0.25, by = CY + (y - CY) * 0.25, a = d.beam / 0.18;
+    gx.globalAlpha = a * 0.35; gx.strokeStyle = d.u.color; gx.lineWidth = 5;
+    gx.beginPath(); gx.moveTo(x, y); gx.lineTo(bx, by); gx.stroke();
+    gx.globalAlpha = a; gx.strokeStyle = '#ffffff'; gx.lineWidth = 1.2; gx.stroke();
+    sprite(gx, d.img, bx, by, 34, a);
+  }
+  sprite(gx, d.img, x, y, s * 8, back ? 0.35 : 0.7);
+  gx.globalCompositeOperation = 'source-over';
+  gx.globalAlpha = back ? 0.55 : 1;
+  gx.fillStyle = d.u.color;
+  gx.beginPath(); gx.arc(x, y, s, 0, TAU); gx.fill();
+  gx.fillStyle = 'rgba(255,255,255,.9)';
+  gx.beginPath(); gx.arc(x - s * .3, y - s * .3, s * .38, 0, TAU); gx.fill();
+  gx.strokeStyle = d.u.color; gx.lineWidth = 1.2;
+  gx.beginPath(); gx.moveTo(x - s * 2.3, y); gx.lineTo(x + s * 2.3, y); gx.stroke();
+  gx.globalAlpha = 1;
+}
+
+function drawCracks(g, prog, o) {
+  if (prog <= 0.02) return;
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  rock.cracks.forEach((seg, i) => {
+    const st = i / rock.cracks.length * 0.7, f = clamp((prog - st) / 0.3, 0, 1);
+    if (f <= 0 || seg.length < 2) return;
+    const n = Math.max(2, Math.ceil(seg.length * f));
+    g.beginPath(); seg.slice(0, n).forEach((p, j) => j ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]));
+    g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 1; g.strokeStyle = 'rgba(0,0,0,.8)'; g.lineWidth = 3.4; g.stroke();
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = 0.35; g.strokeStyle = o.vein; g.lineWidth = 6; g.stroke();
+    g.globalAlpha = 1; g.lineWidth = 1.2; g.stroke();
+  });
+  g.globalCompositeOperation = 'source-over';
+  g.globalAlpha = 1;
+}
+
+function renderRock(time) {
+  const n = rc.width, sz = rock.size, o = ore();
+  rcx.setTransform(1, 0, 0, 1, 0, 0);
+  rcx.globalCompositeOperation = 'source-over'; rcx.globalAlpha = 1;
+  rcx.clearRect(0, 0, n, n);
+  const spin = () => { rcx.setTransform(DPR, 0, 0, DPR, n / 2, n / 2); rcx.rotate(rockRot); };
+  spin();
+  rcx.drawImage(rock.tex, -sz / 2, -sz / 2, sz, sz);
+  rcx.setTransform(DPR, 0, 0, DPR, n / 2, n / 2);
+  rcx.globalCompositeOperation = 'source-atop';
+  rcx.drawImage(rock.light, -sz / 2, -sz / 2, sz, sz);
+  rcx.globalCompositeOperation = 'source-over';
+  spin();
+  rcx.drawImage(rock.emis, -sz / 2, -sz / 2, sz, sz);
+  drawCracks(rcx, 1 - clamp(S.hp / S.maxHp, 0, 1), o);
+  rcx.globalCompositeOperation = 'lighter';
+  for (const s of rock.sparkles) {
+    const a = Math.pow(Math.max(0, Math.sin(time * s.sp + s.ph)), 10);
+    if (a > 0.02) sprite(rcx, FLARE, s.x, s.y, R * 0.28, a);
+  }
+  rcx.globalCompositeOperation = 'source-over'; rcx.globalAlpha = 1;
+}
+
+function drawGame(t) {
+  const time = t / 1000, o = ore();
+  gx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  gx.globalAlpha = 1; gx.globalCompositeOperation = 'source-over';
+  gx.clearRect(0, 0, W, H);
+  if (!rock) return;
+
+  for (const d of debris) if (!d.front) drawDebris(d);
+
+  // 빛줄기 + 후광
+  const pulse = 1 + Math.sin(time * 1.6) * 0.05;
+  gx.globalCompositeOperation = 'lighter';
+  gx.save();
+  gx.translate(CX, CY); gx.rotate(time * 0.05);
+  const rs = R * (4.6 + flash * 1.5);
+  gx.globalAlpha = 0.22 + flash * 0.5 + Math.min(combo, 100) * 0.002;
+  gx.drawImage(raysImg, -rs / 2, -rs / 2, rs, rs);
+  gx.rotate(-time * 0.11);
+  gx.globalAlpha = 0.12;
+  gx.drawImage(raysImg, -rs * 0.4, -rs * 0.4, rs * 0.8, rs * 0.8);
+  gx.restore();
+  sprite(gx, haloImg, CX, CY, R * 4.4 * pulse, 1);
+  gx.globalCompositeOperation = 'source-over'; gx.globalAlpha = 1;
+
+  // 높은 단계 소행성의 에너지 고리
+  if (S.ore >= 5) {
+    gx.globalCompositeOperation = 'lighter';
+    gx.lineWidth = 2; gx.strokeStyle = o.vein;
+    gx.setLineDash([R * 0.25, R * 0.12]);
+    for (let i = 0; i < Math.min(3, S.ore - 4); i++) {
+      gx.lineDashOffset = -time * (40 + i * 25) * (i % 2 ? -1 : 1);
+      gx.globalAlpha = 0.35 - i * 0.08;
+      gx.beginPath(); gx.ellipse(CX, CY, R * (1.25 + i * 0.12), R * (0.3 + i * 0.05), -0.3 + i * 0.5, 0, TAU); gx.stroke();
+    }
+    gx.setLineDash([]); gx.lineDashOffset = 0;
+    gx.globalCompositeOperation = 'source-over'; gx.globalAlpha = 1;
+  }
+
+  if (drones.length) {
+    gx.setLineDash([3, 7]); gx.lineWidth = 1;
+    let lastK = -1;
+    for (const d of drones) {
+      if (d.k === lastK) continue;
+      lastK = d.k;
+      gx.strokeStyle = hexA(d.u.color, .16);
+      gx.beginPath(); gx.ellipse(CX, CY, R * d.orbit, R * d.orbit * d.tilt, 0, 0, TAU); gx.stroke();
+    }
+    gx.setLineDash([]);
+  }
+
+  for (const d of drones) if (Math.sin(d.ang) < 0) drawDrone(d, true);
+
+  renderRock(time);
+  const sp = spawnT < 1 ? easeOutBack(spawnT) : 1;
+  const sc = sp * (1 - punch * 0.045 + Math.sin(punch * 9) * punch * 0.02);
+  const shx = (Math.random() - .5) * shake, shy = (Math.random() - .5) * shake;
+  const dw = rock.size * sc, rx = CX + shx, ry = CY + shy + Math.sin(time * 0.9) * 4;
+  gx.drawImage(rc, rx - dw / 2, ry - dw / 2, dw, dw);
+  if (flash > 0) {
+    gx.globalCompositeOperation = 'lighter';
+    gx.globalAlpha = flash * 0.35;
+    gx.drawImage(rc, rx - dw / 2, ry - dw / 2, dw, dw);
+    gx.globalAlpha = 1; gx.globalCompositeOperation = 'source-over';
+  }
+
+  for (const d of drones) if (Math.sin(d.ang) >= 0) drawDrone(d, false);
+
+  for (const p of particles) {
+    if (p.t === 'spark') {
+      gx.globalCompositeOperation = 'lighter';
+      gx.globalAlpha = p.life;
+      gx.strokeStyle = p.c; gx.lineWidth = 1.8;
+      gx.beginPath(); gx.moveTo(p.x, p.y); gx.lineTo(p.x - p.vx * 0.035, p.y - p.vy * 0.035); gx.stroke();
+    } else if (p.t === 'flare') {
+      gx.globalCompositeOperation = 'lighter';
+      const k = p.life * p.life;
+      sprite(gx, glow(p.c), p.x, p.y, p.size * (1.2 - p.life * 0.4), k * 0.8);
+      sprite(gx, FLARE, p.x, p.y, p.size * 0.9, k);
+    } else if (p.t === 'ring') {
+      gx.globalCompositeOperation = 'lighter';
+      const r = p.r + (1 - p.life) * R * p.grow;
+      gx.strokeStyle = p.c;
+      gx.globalAlpha = p.life * 0.25; gx.lineWidth = 10 * p.life + 2;
+      gx.beginPath(); gx.arc(p.x, p.y, r, 0, TAU); gx.stroke();
+      gx.globalAlpha = p.life * 0.9; gx.lineWidth = 2 * p.life + .5; gx.stroke();
+    } else if (p.t === 'gem') {
+      gx.globalCompositeOperation = 'source-over';
+      const c = Math.cos(p.rot), s = Math.sin(p.rot), z = p.size * (1 - p.u * 0.4);
+      gx.setTransform(DPR * c, DPR * s, -DPR * s, DPR * c, DPR * p.x, DPR * p.y);
+      gx.globalAlpha = 1;
+      gx.drawImage(GEM, -z, -z, z * 2, z * 2);
+      gx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    } else {
+      gx.globalCompositeOperation = 'source-over';
+      const c = Math.cos(p.rot), s = Math.sin(p.rot), z = p.size;
+      gx.setTransform(DPR * c, DPR * s, -DPR * s, DPR * c, DPR * p.x, DPR * p.y);
+      gx.globalAlpha = clamp(p.life * 1.4, 0, 1);
+      gx.fillStyle = p.c;
+      gx.beginPath(); gx.moveTo(-z, -z * .6); gx.lineTo(z * .8, -z * .8); gx.lineTo(z, z * .5); gx.lineTo(-z * .4, z); gx.closePath(); gx.fill();
+      gx.fillStyle = 'rgba(255,255,255,.3)';
+      gx.beginPath(); gx.moveTo(-z, -z * .6); gx.lineTo(z * .8, -z * .8); gx.lineTo(0, 0); gx.closePath(); gx.fill();
+      gx.fillStyle = 'rgba(0,0,0,.35)';
+      gx.beginPath(); gx.moveTo(z, z * .5); gx.lineTo(-z * .4, z); gx.lineTo(0, 0); gx.closePath(); gx.fill();
+      gx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+  }
+  gx.globalAlpha = 1; gx.globalCompositeOperation = 'source-over';
+
+  for (const d of debris) if (d.front) drawDebris(d);
+
+  if (comet) {
+    const c = comet, tail = 170, len = Math.hypot(c.vx, c.vy), ux = c.vx / len, uy = c.vy / len;
+    gx.globalCompositeOperation = 'lighter';
+    const tg = gx.createLinearGradient(c.x, c.y, c.x - ux * tail, c.y - uy * tail);
+    tg.addColorStop(0, 'rgba(255,220,120,.9)'); tg.addColorStop(1, 'rgba(255,160,60,0)');
+    gx.fillStyle = tg;
+    gx.beginPath(); gx.moveTo(c.x - uy * 10, c.y + ux * 10); gx.lineTo(c.x - ux * tail, c.y - uy * tail); gx.lineTo(c.x + uy * 10, c.y - ux * 10); gx.closePath(); gx.fill();
+    sprite(gx, glow('#ffd166'), c.x, c.y, 90 + Math.sin(time * 10) * 8, 1);
+    sprite(gx, FLARE, c.x, c.y, 110, 0.8);
+    gx.globalAlpha = 1; gx.globalCompositeOperation = 'source-over';
+  }
+
+  // 콤보 표시
+  if (combo > 1 && comboTimer > 0) {
+    const k = Math.min(combo, M.comboCap) / M.comboCap;
+    const col = k < 0.33 ? '#5ef0ff' : k < 0.66 ? '#ffd166' : '#ff6bd6';
+    const hx = Math.min(W - 70, CX + R * 1.2), hy = Math.max(60, CY - R * 0.95);
+    gx.textAlign = 'center'; gx.textBaseline = 'middle'; gx.lineJoin = 'round';
+    gx.lineWidth = 3; gx.strokeStyle = 'rgba(255,255,255,.12)';
+    gx.beginPath(); gx.arc(hx, hy, 34, 0, TAU); gx.stroke();
+    gx.strokeStyle = col; gx.lineWidth = 3.5;
+    gx.beginPath(); gx.arc(hx, hy, 34, -Math.PI / 2, -Math.PI / 2 + TAU * (comboTimer / M.comboTime)); gx.stroke();
+    const bounce = 1 + punch * 0.25;
+    gx.font = `700 ${Math.round(22 * bounce)}px "Chakra Petch", sans-serif`;
+    gx.lineWidth = 5; gx.strokeStyle = 'rgba(4,5,13,.8)';
+    gx.strokeText(combo, hx, hy - 4); gx.fillStyle = col; gx.fillText(combo, hx, hy - 4);
+    gx.font = '600 10px "Chakra Petch", sans-serif';
+    gx.fillStyle = '#ffffff'; gx.fillText(`COMBO x${comboMult().toFixed(2)}`, hx, hy + 15);
+  }
+  // 콤보 합계 (연타 중 + 끝난 직후 잠깐)
+  if ((combo > 3 && comboTimer > 0) || comboShow > 0) {
+    const live = combo > 3 && comboTimer > 0;
+    const a = live ? 1 : clamp(comboShow / 0.6, 0, 1);
+    const sy = Math.max(40, CY - R * 1.38) - (live ? 0 : (1.6 - comboShow) * 20);
+    gx.textAlign = 'center'; gx.textBaseline = 'middle'; gx.lineJoin = 'round';
+    gx.globalAlpha = a;
+    gx.font = '600 12px "Noto Sans KR", sans-serif';
+    const size = Math.round(clamp(W / 18, 22, 40) * (1 + punch * 0.12));
+    gx.fillStyle = '#c9cff5'; gx.fillText(live ? '콤보 합계' : '콤보 끝!', CX, sy - size * 0.55 - 10);
+    gx.font = `700 ${size}px "Chakra Petch", sans-serif`;
+    const gr = gx.createLinearGradient(0, sy - size / 2, 0, sy + size / 2);
+    gr.addColorStop(0, '#fff6d6'); gr.addColorStop(1, '#ffb347');
+    gx.lineWidth = 8; gx.strokeStyle = 'rgba(4,5,13,.85)';
+    const txt = '+' + fmt(comboShowSum);
+    gx.strokeText(txt, CX, sy); gx.fillStyle = gr; gx.fillText(txt, CX, sy);
+    gx.globalAlpha = 1;
+  }
+
+  // 떠오르는 숫자
+  gx.textAlign = 'center'; gx.textBaseline = 'middle'; gx.lineJoin = 'round';
+  for (const tx of texts) {
+    const popS = tx.pop ? 1 + Math.max(0, (tx.life - 0.82) / 0.18) * 0.7 : 1;
+    gx.globalAlpha = clamp(tx.life * 1.6, 0, 1);
+    gx.font = `700 ${Math.round(tx.size * popS)}px "Chakra Petch", "Noto Sans KR", sans-serif`;
+    gx.lineWidth = tx.size > 24 ? 7 : 5; gx.strokeStyle = 'rgba(4,5,13,.8)';
+    gx.strokeText(tx.text, tx.x, tx.y);
+    gx.fillStyle = tx.color; gx.fillText(tx.text, tx.x, tx.y);
+  }
+  gx.globalAlpha = 1;
+
+  if (mouse.in || touchShow > 0) {
+    const ang = -0.35 - Math.sin(swing * Math.PI) * 0.9;
+    drawPick(gx, mouse.x, mouse.y, ang, clamp(R / 140, 0.7, 1.1));
+  }
+}
+function drawDebris(d) {
+  const c = Math.cos(d.rot), s = Math.sin(d.rot);
+  gx.setTransform(DPR * c, DPR * s, -DPR * s, DPR * c, DPR * d.x, DPR * d.y);
+  gx.globalAlpha = d.alpha;
+  gx.drawImage(d.img, -d.size / 2, -d.size / 2, d.size, d.size);
+  gx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  gx.globalAlpha = 1;
+}
+const easeOutBack = x => { const c1 = 1.7, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+
+/* ================= 업데이트 ================= */
+function update(dt) {
+  const m = mps();
+  if (m > 0) {
+    addCredits(m * oreVal() * dt); damage(m * dt);
+    incomeT += dt;
+    if (incomeT >= 1) {
+      incomeT = 0;
+      const a = rand(-2.4, -0.7);
+      floatText(CX + Math.cos(a) * R * 1.05, CY + Math.sin(a) * R * 0.9, `+${fmt(m * oreVal())}`, hexA(ore().vein, 1), 15);
+    }
+  }
+
+  if (comboTimer > 0) {
+    comboTimer -= dt;
+    if (comboTimer <= 0) {
+      // 콤보가 끝나면 합계를 크게 한 번 보여 줌
+      if (combo >= 5) { comboShow = 1.6; comboShowSum = comboSum; }
+      combo = 0;
+    }
+  }
+  comboShowSum = combo > 1 ? comboSum : comboShowSum;
+  if (comboShow > 0) comboShow -= dt;
+  rockRot += dt * 0.06;
+  punch = Math.max(0, punch - dt * 5);
+  shake = Math.max(0, shake - dt * 60);
+  flash = Math.max(0, flash - dt * 3);
+  swing = Math.max(0, swing - dt * 7);
+  touchShow = Math.max(0, touchShow - dt);
+  if (spawnT < 1) spawnT = Math.min(1, spawnT + dt * 2.2);
+
+  for (const d of drones) {
+    d.ang += d.spd * dt;
+    d.beam = Math.max(0, d.beam - dt);
+    d.fire -= dt;
+    if (d.fire <= 0) {
+      d.fire = rand(0.8, 2.4);
+      d.beam = 0.18;
+      const [x, y] = dronePos(d);
+      const hx = CX + (x - CX) * 0.25, hy = CY + (y - CY) * 0.25;
+      for (let i = 0; i < 3; i++) {
+        const a = Math.atan2(y - hy, x - hx) + rand(-1, 1), s = rand(60, 180);
+        particles.push({ t: 'spark', x: hx, y: hy, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, decay: rand(2.5, 4), c: d.u.color });
+      }
+    }
+  }
+
+  for (const d of debris) {
+    d.x += d.vx * dt; d.y += d.vy * dt; d.rot += d.vr * dt;
+    if (d.x < -40) d.x = W + 40; else if (d.x > W + 40) d.x = -40;
+    if (d.y < -40) d.y = H + 40; else if (d.y > H + 40) d.y = -40;
+  }
+
+  let w = 0;
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    if (p.t === 'gem') {
+      // 보석은 곡선을 그리며 크레딧 칸으로 날아가요
+      p.u += dt * p.spd;
+      if (p.u >= 1) continue;
+      const u = p.u * p.u, iu = 1 - u;
+      p.x = iu * iu * p.x0 + 2 * iu * u * p.cx + u * u * gemTarget.x;
+      p.y = iu * iu * p.y0 + 2 * iu * u * p.cy + u * u * gemTarget.y;
+      p.rot += p.vr * dt;
+      particles[w++] = p;
+      continue;
+    }
+    p.life -= p.decay * dt;
+    if (p.life <= 0) continue;
+    if (p.vx !== undefined) {
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= 1 - dt * 1.8; p.vy *= 1 - dt * 1.8;
+    }
+    if (p.rot !== undefined) p.rot += p.vr * dt;
+    particles[w++] = p;
+  }
+  particles.length = w;
+  if (particles.length > 500) particles.splice(0, particles.length - 500);
+  for (const t of texts) { t.y += t.vy * dt; t.vy *= 1 - dt * 1.5; t.life -= dt * 0.85; }
+  texts = texts.filter(t => t.life > 0);
+
+  cometTimer -= dt;
+  if (cometTimer <= 0 && !comet) { spawnComet(); cometTimer = rand(40, 75) / M.cometFreq; }
+  if (comet) {
+    comet.x += comet.vx * dt; comet.y += comet.vy * dt;
+    comet.trail -= dt;
+    if (comet.trail <= 0) {
+      comet.trail = 0.03;
+      particles.push({ t: 'spark', x: comet.x, y: comet.y, vx: rand(-40, 40) - comet.vx * 0.2, vy: rand(-40, 40), life: 1, decay: rand(1.5, 2.5), c: '#ffd166' });
+    }
+    if (comet.x < -200 || comet.x > W + 200) comet = null;
+  }
+}
+
+/* ================= 상점 UI ================= */
+function itemHTML(id, color, icon, extra = '') {
+  return `<button class="item" ${id ? `id="${id}"` : ''} ${extra} style="--accent:${color}">
+    <div class="ico">${ICONS[icon]}</div>
+    <div class="info"><div class="nm"><span class="n"></span><span class="lv"></span></div><div class="ds"></div><div class="cost">${GEM_SVG}<span></span></div></div>
+    <div class="own"></div>
+    <div class="bar"><i></i></div>
+  </button>`;
+}
+$('#gear').innerHTML = itemHTML('it-pick', '#7ef3ff', 'pick');
+$('#explore').innerHTML = itemHTML('it-explore', '#ff8a3d', 'explore');
+$('#units').innerHTML = UNITS.map(u => itemHTML('it-' + u.id, u.color, u.id)).join('');
+
+const refs = el => ({ el, n: el.querySelector('.n'), lv: el.querySelector('.lv'), ds: el.querySelector('.ds'), cost: el.querySelector('.cost span'), own: el.querySelector('.own'), bar: el.querySelector('.bar i'), accent: '', p: -1 });
+const els = {};
+['it-pick', 'it-explore', ...UNITS.map(u => 'it-' + u.id)].forEach(id => { els[id] = refs(document.getElementById(id)); });
+const ui = {
+  credits: $('#credits'), cps: $('#cps'), cpc: $('#cpc'), oreName: $('#oreName'), oreMult: $('#oreMult'),
+  sector: $('#sector'), hpFill: $('#hpFill'), hpText: $('#hpText'), broken: $('#broken'), total: $('#total'),
+  clicks: $('#clicks'), boost: $('#boost'), boostT: $('#boostT'), boostGlow: $('#boostGlow'), creditBox: $('#creditBox'),
+  resBadge: $('#resBadge'), achBadge: $('#achBadge'), shardTag: $('#shardTag'),
+};
+function setText(node, v) { if (node.textContent !== v) node.textContent = v; }
+// 숫자가 길어지면 글자를 조금씩 줄여서 칸에 맞춤
+function setNum(node, v, base, fit) {
+  if (node.textContent === v) return;
+  node.textContent = v;
+  const size = v.length <= fit ? base : Math.max(11, base * fit / v.length);
+  node.style.fontSize = size + 'px';
+}
+function setAccent(it, c) { if (it.accent !== c) { it.accent = c; it.el.style.setProperty('--accent', c); } }
+function setBar(it, p) {
+  p = Math.round(clamp(p, 0, 1) * 100) / 100;
+  if (it.p !== p) { it.p = p; it.bar.style.transform = `scaleX(${p})`; }
+}
+function flashItem(el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+let bumpT = 0;
+function bumpCredits() {
+  const now = performance.now();
+  if (now - bumpT < 260) return;
+  bumpT = now;
+  ui.creditBox.classList.remove('bump'); void ui.creditBox.offsetWidth; ui.creditBox.classList.add('bump');
+}
+
+els['it-pick'].el.addEventListener('click', () => {
+  const c = pickCost(qty);
+  if (S.credits < c) return;
+  S.credits -= c; S.pick += qty;
+  sfx.buy(); flashItem(els['it-pick'].el); updateUI();
+});
+els['it-explore'].el.addEventListener('click', () => {
+  const next = ORES[S.ore + 1];
+  if (!next || S.credits < next.cost) return;
+  S.credits -= next.cost; S.ore++;
+  S.maxOre = Math.max(S.maxOre, S.ore);
+  sfx.explore(); flashItem(els['it-explore'].el);
+  buildOreFx();
+  newRock();
+  toast(`🪐 새 소행성 발견: <b style="color:${next.vein}">${next.name}</b> · 광석 가치 x${fmt(next.mult)}`);
+  updateUI();
+});
+UNITS.forEach(u => {
+  els['it-' + u.id].el.addEventListener('click', () => {
+    const c = unitCost(u, qty);
+    if (S.credits < c || !revealed(u)) return;
+    S.credits -= c; S.units[u.id] += qty;
+    sfx.buy(); flashItem(els['it-' + u.id].el);
+    buildDrones(); updateUI();
+  });
+});
+$('#qty').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  qty = +b.dataset.q;
+  $('#qty').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  updateUI();
+});
+const revealed = u => S.units[u.id] > 0 || S.runTotal >= u.base * 0.4;
+
+/* ---------- 탭 ---------- */
+let tab = 'main';
+$('#tabs').addEventListener('click', e => {
+  const b = e.target.closest('.tab'); if (!b) return;
+  tab = b.dataset.tab;
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== tab; });
+  $('#qty').style.visibility = tab === 'main' ? 'visible' : 'hidden';
+  $('#shopScroll').scrollTop = 0;
+  updateUI();
+});
+
+/* ---------- 연구 ---------- */
+let resKey = '', resEls = [];
+const visibleResearch = () => UPGRADES.filter(u => !S.upgrades.includes(u.id) && u.req()).sort((a, b) => a.cost - b.cost);
+function renderResearch() {
+  const list = visibleResearch();
+  const key = list.map(u => u.id).join(',');
+  if (key !== resKey) {
+    resKey = key;
+    $('#research').innerHTML = list.map(u => itemHTML('', u.color, u.icon, `data-up="${u.id}"`)).join('');
+    resEls = [...$('#research').querySelectorAll('.item')].map(el => {
+      const r = refs(el), u = UP_MAP[el.dataset.up];
+      r.up = u;
+      setText(r.n, u.name); setText(r.ds, u.desc); setText(r.cost, fmt(u.cost));
+      return r;
+    });
+    const near = UPGRADES.filter(u => !S.upgrades.includes(u.id) && !u.req() && u.near()).sort((a, b) => a.cost - b.cost).slice(0, 3);
+    $('#resLocked').innerHTML = (list.length ? '' : '지금 할 수 있는 연구가 없어요.<br>') +
+      (near.length ? '곧 열리는 연구: ' + near.map(u => `<b>${u.name}</b> <span style="opacity:.7">(${u.reqText})</span>`).join(', ') : '');
+  }
+  let can = 0;
+  for (const r of resEls) {
+    const ok = S.credits >= r.up.cost;
+    if (ok) can++;
+    r.el.classList.toggle('can', ok);
+    setBar(r, S.credits / r.up.cost);
+  }
+  ui.resBadge.hidden = can === 0;
+  setText(ui.resBadge, String(can));
+}
+$('#research').addEventListener('click', e => {
+  const b = e.target.closest('[data-up]'); if (!b) return;
+  const u = UP_MAP[b.dataset.up];
+  if (!u || S.upgrades.includes(u.id) || S.credits < u.cost) return;
+  S.credits -= u.cost;
+  S.upgrades.push(u.id);
+  recalc();
+  sfx.research();
+  toast(`🔬 연구 완료: <b>${u.name}</b> · ${u.desc}`);
+  updateUI();
+});
+
+/* ---------- 업적 ---------- */
+$('#achGrid').innerHTML = ACH.map(([id, name, desc]) => `<div class="ach" data-ach="${id}"><b>${name}</b><span>${desc}</span></div>`).join('');
+const achEls = Object.fromEntries([...document.querySelectorAll('[data-ach]')].map(el => [el.dataset.ach, el]));
+function checkAch() {
+  let changed = false;
+  for (const [id, name, , test] of ACH) {
+    if (!S.ach.includes(id) && test()) {
+      S.ach.push(id); changed = true;
+      sfx.ach();
+      toast(`🏆 업적 달성: <b style="color:#ffd166">${name}</b> · 모든 생산 +2%`, 'gold');
+    }
+  }
+  if (changed) recalc();
+  for (const id in achEls) achEls[id].classList.toggle('got', S.ach.includes(id));
+  setText($('#achCount'), `${S.ach.length} / ${ACH.length}`);
+  setText($('#achBonus'), `업적 하나마다 모든 생산 +2% · 지금 +${S.ach.length * 2}%`);
+  setText(ui.achBadge, String(S.ach.length));
+}
+
+/* ---------- 초신성 ---------- */
+function renderNova() {
+  const gain = shardGain();
+  setText($('#novaHave'), fmt(S.shards));
+  setText($('#novaGain'), fmt(gain));
+  setText($('#novaBonus'), `+${fmt(S.shards * 5)}%`);
+  setText($('#novaAfter'), `+${fmt((S.shards + gain) * 5)}%`);
+  $('#novaBtn').disabled = gain < 1;
+  const need = Math.pow(gain + 1, 2) * 1e9;
+  setText($('#novaNext'), `이번 판 채굴량 ${fmt(S.runTotal)} · 다음 조각까지 ${fmt(Math.max(0, need - S.runTotal))} 크레딧`);
+}
+$('#novaBtn').addEventListener('click', () => {
+  const gain = shardGain();
+  if (gain < 1) return;
+  if (!confirm(`초신성을 터뜨릴까요?\n\n별 조각 ${fmt(gain)}개를 얻고 (모든 생산 영구 +${fmt(gain * 5)}%)\n크레딧·장비·부대·연구·탐사는 처음으로 돌아가요.`)) return;
+  const keep = { total: S.total, clicks: S.clicks, ach: S.ach, shards: S.shards + gain, prestiges: S.prestiges + 1,
+    bestCombo: S.bestCombo, comets: S.comets, crits: S.crits, maxOre: S.maxOre, brokenAll: S.brokenAll, muted: S.muted };
+  S = Object.assign(fresh(), keep);
+  recalc();
+  boostUntil = 0; comet = null; combo = 0; comboTimer = 0; texts = []; shownCredits = 0; lastOre = -1;
+  sfx.nova();
+  const nf = $('#novaFlash'); nf.classList.remove('go'); void nf.offsetWidth; nf.classList.add('go');
+  explode(CX, CY);
+  for (let i = 0; i < 4; i++) particles.push({ t: 'ring', x: CX, y: CY, r: R * (0.2 + i * 0.3), life: 1, decay: 0.6 + i * 0.2, c: i % 2 ? '#ff6bd6' : '#a77bff', grow: 3 });
+  buildOreFx(); newRock(); buildDrones();
+  toast(`🌟 초신성 폭발! 별 조각 <b style="color:#ff6bd6">${fmt(gain)}개</b> 획득 · 모든 생산 +${fmt(S.shards * 5)}%`, 'gold');
+  checkAch(); updateUI(); save();
+});
+
+/* ---------- 화면 갱신 ---------- */
+let shownCredits = 0, lastOre = -1;
+function tickCredits(dt) {
+  const d = S.credits - shownCredits;
+  shownCredits = Math.abs(d) < 1 ? S.credits : shownCredits + d * Math.min(1, dt * 12);
+  setNum(ui.credits, fmt(shownCredits), 26, 13);
+}
+
+function updateUI() {
+  const o = ore(), v = oreVal();
+  setNum(ui.cps, fmt(mps() * v), 19, 10);
+  setNum(ui.cpc, fmt(clickPower() * v), 19, 10);
+  if (lastOre !== S.ore) {
+    lastOre = S.ore;
+    setText(ui.oreName, o.name);
+    setText(ui.sector, `SECTOR ${String(S.ore + 1).padStart(2, '0')} / ${String(ORES.length).padStart(2, '0')}`);
+    stage.style.setProperty('--ore', o.vein);
+  }
+  setText(ui.oreMult, '가치 x' + fmt(v));
+  const hp = Math.max(0, S.hp);
+  ui.hpFill.style.transform = `scaleX(${(hp / S.maxHp).toFixed(3)})`;
+  setText(ui.hpText, `내구도 ${fmt(Math.ceil(hp))} / ${fmt(S.maxHp)}`);
+  setText(ui.broken, fmt(S.brokenAll));
+  setText(ui.total, fmt(S.total));
+  setText(ui.clicks, fmt(S.clicks));
+  const tag = S.shards ? ` · 별 조각 <b>${fmt(S.shards)}</b>` : '';
+  if (ui.shardTag.dataset.v !== tag) { ui.shardTag.dataset.v = tag; ui.shardTag.innerHTML = tag; }
+  const b = boost() > 1;
+  ui.boost.hidden = !b;
+  ui.boostGlow.classList.toggle('on', b);
+  if (b) setText(ui.boostT, Math.ceil((boostUntil - performance.now()) / 1000) + '');
+
+  if (tab === 'main') {
+    const P = els['it-pick'], pc = pickCost(qty), tier = pickTier();
+    setText(P.n, tier.name); setText(P.lv, 'Lv ' + S.pick);
+    setText(P.ds, `클릭 채굴력 ${fmt(pickPower(S.pick))} → ${fmt(pickPower(S.pick + qty))}`);
+    setText(P.cost, fmt(pc)); setText(P.own, '');
+    setAccent(P, tier.color);
+    P.el.classList.toggle('can', S.credits >= pc);
+    setBar(P, S.credits / pc);
+
+    const E = els['it-explore'], next = ORES[S.ore + 1];
+    if (next) {
+      setText(E.n, next.name); setText(E.lv, 'x' + fmt(next.mult));
+      setText(E.ds, '더 깊은 우주로 탐사를 떠나 새 소행성을 찾아요');
+      setText(E.cost, fmt(next.cost));
+      setAccent(E, next.vein);
+      E.el.classList.toggle('can', S.credits >= next.cost);
+      setBar(E, S.credits / next.cost);
+    } else {
+      setText(E.n, '탐사 완료'); setText(E.lv, '');
+      setText(E.ds, '모든 소행성을 발견했어요! 이제 초신성에 도전해 보세요.'); setText(E.cost, '—');
+      E.el.classList.remove('can');
+      setBar(E, 1);
+    }
+    setText(E.own, '');
+
+    UNITS.forEach(u => {
+      const it = els['it-' + u.id], show = revealed(u), c = unitCost(u, qty);
+      it.el.classList.toggle('locked', !show);
+      setText(it.n, show ? u.name : '???');
+      setText(it.lv, show ? `1대당 +${fmt(u.mps * M.unit[u.id] * M.all * oreVal())}/초` : '');
+      setText(it.ds, show ? u.desc : '더 채굴하면 정체가 드러나요');
+      setText(it.cost, fmt(c));
+      setText(it.own, S.units[u.id] ? fmt(S.units[u.id]) : '');
+      it.el.classList.toggle('can', show && S.credits >= c);
+      setBar(it, show ? S.credits / c : 0);
+    });
+  }
+  renderResearch();
+  if (tab === 'nova') renderNova();
+}
+
+/* ================= 기타 UI ================= */
+function toast(html, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind; el.innerHTML = html;
+  const box = $('#toasts');
+  box.appendChild(el);
+  while (box.children.length > 4) box.firstChild.remove();
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, 3400);
+}
+let hintHidden = false;
+function hideHint() {
+  if (hintHidden) return;
+  hintHidden = true;
+  setTimeout(() => { $('#hint').style.opacity = '0'; }, 3500);
+}
+const SPEAKER_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>';
+const SPEAKER_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>';
+function renderMute() { $('#mute').innerHTML = S.muted ? SPEAKER_OFF : SPEAKER_ON; }
+$('#mute').addEventListener('click', () => { S.muted = !S.muted; renderMute(); save(); });
+$('#reset').addEventListener('click', () => {
+  if (!confirm('정말 처음부터 다시 시작할까요?\n별 조각과 업적까지 모든 기록이 사라져요.')) return;
+  const muted = S.muted;
+  S = fresh(); S.muted = muted;
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  recalc();
+  boostUntil = 0; comet = null; particles = []; texts = []; shownCredits = 0; lastOre = -1; combo = 0;
+  buildOreFx();
+  newRock(); buildDrones(); checkAch(); updateUI(); save();
+});
+
+/* ================= 시작 ================= */
+load();
+recalc();
+if (!S.maxHp || S.hp == null || S.hp > S.maxHp) { S.maxHp = rollMaxHp(); S.hp = S.maxHp; }
+shownCredits = S.credits;
+renderMute();
+
+const cap = (M.offline ? 8 : 2) * 3600 * 1000;
+const away = Math.min(Date.now() - (S.last || Date.now()), cap) / 1000;
+const offline = baseMps() * oreVal() * away * (M.offline ? 1 : 0.5);
+if (offline >= 1 && away > 30) {
+  addCredits(offline);
+  setTimeout(() => toast(`🌙 자리를 비운 동안 채굴 부대가 <b style="color:#ffd166">${fmt(offline)}</b> 크레딧을 모았어요`, 'gold'), 600);
+}
+if (S.clicks > 0) hideHint();
+
+buildSky();
+let skyTimer = 0;
+addEventListener('resize', () => { clearTimeout(skyTimer); skyTimer = setTimeout(buildSky, 150); });
+let resizeTimer = 0;
+new ResizeObserver(() => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 100); }).observe(stage);
+resize();
+checkAch();
+updateUI();
+addEventListener('scroll', updateGemTarget, { passive: true });
+
+let last = performance.now(), uiT = 0, achT = 0;
+function frame(t) {
+  const dt = Math.min(0.1, (t - last) / 1000);
+  last = t;
+  update(dt);
+  drawSky(t);
+  drawGame(t);
+  tickCredits(dt);
+  uiT += dt; achT += dt;
+  if (uiT > 0.12) { uiT = 0; updateUI(); }
+  if (achT > 0.5) { achT = 0; checkAch(); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+setInterval(save, 5000);
+addEventListener('beforeunload', save);
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+})();
+</script>
+</body>
+</html>
