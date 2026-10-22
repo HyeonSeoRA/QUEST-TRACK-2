@@ -15,7 +15,10 @@ const Real = (() => {
       hair: false, eyes: 'void', grin: false, tears: true, skin: [0.70, 0.69, 0.67], seed: 23 },
     // 2: 귀까지 찢어진 웃음 — 동그랗게 뜬 눈, 작은 눈동자
     { eyeX: 0.23, eyeY: -0.09, eyeRX: 0.085, eyeRY: 0.07, sock: 0.26, mouthY: 0.33, mouthW: 0.43, mouthH: 0.085,
-      hair: false, eyes: 'stare', grin: true, tears: false, skin: [0.74, 0.66, 0.6], seed: 37 },
+      hair: false, eyes: 'stare', grin: true, tears: false, skin: [0.74, 0.66, 0.6], seed: 37, blood: true },
+    // 3: 입이 꿰매진 얼굴 — 움푹 꺼진 눈구멍 속 바늘구멍 같은 빛, 뺨을 가로지른 꿰맨 상처
+    { eyeX: 0.21, eyeY: -0.06, eyeRX: 0.088, eyeRY: 0.064, sock: 0.42, mouthY: 0.4, mouthW: 0.17, mouthH: 0.02,
+      hair: false, eyes: 'glow', grin: false, tears: false, sewn: true, skin: [0.64, 0.6, 0.58], seed: 53, blood: true },
   ];
 
   const mix3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
@@ -71,7 +74,7 @@ const Real = (() => {
         for (const s of [-1, 1]) {
           const ex = (u - s * P.eyeX) / P.eyeRX, ey = (v - P.eyeY) / P.eyeRY;
           const edge = 1 + (U.noise(u * 30, v * 30, sd + 8) - 0.5) * 0.2;
-          if (ex * ex + ey * ey < edge * (P.eyes === 'void' ? 1.7 : 1)) M[i] = 2;
+          if (ex * ex + ey * ey < edge * (P.eyes === 'void' || P.eyes === 'glow' ? 1.7 : 1)) M[i] = 2;
         }
         if (md < 1) M[i] = 3;
       }
@@ -138,6 +141,13 @@ const Real = (() => {
               // 눈알이 없는 깊은 구멍
               const g = Math.exp(-(((ex + 0.3) ** 2) + ((ey + 0.35) ** 2)) / 0.01) * U.smooth(1, 0.3, r2);
               col = mix3(col, [0.003, 0.002, 0.003], U.smooth(1.7, 0.55, r2)).map(cv => cv + g * 0.3);
+            } else if (P.eyes === 'glow') {
+              // 깊은 구멍 속에서 바늘구멍만 한 눈동자가 빛난다
+              const ir = Math.hypot(ex * P.eyeRX, ey * P.eyeRY);
+              col = mix3(col, [0.002, 0.001, 0.001], U.smooth(1.7, 0.5, r2));
+              const halo = Math.exp(-(ir * ir) / 0.0009);
+              col = [col[0] + halo * 0.55, col[1] + halo * 0.4, col[2] + halo * 0.32];
+              if (ir < 0.011) col = [1, 0.93, 0.82];
             } else {
               const skinCol = col;
               const vein = U.smooth(0.88, 0.97, 1 - Math.abs(U.fbm(u * 40, v * 40, 3, sd + 30) * 2 - 1)) * U.smooth(0.15, 0.8, r2);
@@ -216,6 +226,48 @@ const Real = (() => {
               if (tv > 0 && tv < 0.28 && Math.abs(tu + Math.sin(tv * 20) * 0.006) < 0.012 * (1 - tv / 0.3)) col = [0.3 * (0.4 + d1), 0.01, 0.02];
             }
           }
+          if (P.sewn) {
+            // 입술을 굵은 검은 실로 꿰맸다. 바늘구멍에서는 피가 배어 나온다
+            const dm = Math.abs(v - P.mouthY);
+            const puff = Math.exp(-((u / (P.mouthW * 1.2)) ** 2 + ((v - P.mouthY) / 0.06) ** 2));
+            col = mix3(col, [0.3 * (0.4 + d1), 0.12, 0.16], puff * 0.45);
+            for (let st = -4; st <= 4; st++) {
+              const su = st * 0.037 + (U.hash(st, 1, sd) - 0.5) * 0.008, tilt = (U.hash(st, 2, sd) - 0.5) * 0.02;
+              if (Math.abs(u) > P.mouthW * 1.05) continue;
+              // X 자로 엇갈린 굵은 실
+              for (const dir of [-1, 1]) {
+                const du = Math.abs(u - su - (v - P.mouthY) * (0.35 * dir + tilt));
+                if (dm < 0.05 && du < 0.0075) {
+                  const th = 0.015 + 0.09 * Math.exp(-(du * du) / 0.000012) * (0.4 + d1);
+                  col = [th, th * 0.85, th * 0.8];
+                }
+              }
+              for (const hv of [-0.05, 0.05]) for (const hu of [-0.0175, 0.0175]) {
+                const hd = Math.hypot(u - su - hu * (hv > 0 ? 1 : -1), v - P.mouthY - hv);
+                if (hd < 0.009) col = mix3(col, [0.22 * (0.4 + d1), 0.01, 0.02], 0.9);
+              }
+              // 바늘구멍 몇 군데에서만 피가 흘러내린다
+              if (U.hash(st, 3, sd) < 0.35 && Math.abs(u - su - 0.017) < 0.005 + 0.003 * Math.sin(v * 60) && v > P.mouthY + 0.05 && v < P.mouthY + 0.08 + U.hash(st, 4, sd) * 0.2) {
+                col = [0.24 * (0.3 + d1), 0.008, 0.015];
+              }
+            }
+            // 왼쪽 뺨을 가로지른 꿰맨 상처
+            const ax = -0.46, ay = -0.02, bx = -0.2, by = 0.26;
+            const vx = bx - ax, vy = by - ay, tt = U.clamp(((u - ax) * vx + (v - ay) * vy) / (vx * vx + vy * vy), 0, 1);
+            const sd2 = Math.hypot(u - ax - vx * tt, v - ay - vy * tt);
+            if (sd2 < 0.016) col = mix3(col, [0.3 * (0.3 + d1), 0.06, 0.07], U.smooth(0.016, 0.004, sd2));
+            if (sd2 < 0.03 && (tt * 9) % 1 < 0.12) col = [0.03, 0.02, 0.02];
+          }
+          if (P.blood) {
+            // 튀어 있는 핏방울
+            // 한쪽으로 튄 잔 핏방울 (눈과 입 안에는 묻지 않는다)
+            const side = U.smooth(-0.1, 0.5, u * 0.8 + v * 0.6);
+            const sp = U.noise(u * 55, v * 55, sd + 70) * side;
+            if (M[i] === 1 && sp > 0.72) col = mix3(col, [0.17 * (0.35 + d1), 0.01, 0.015], U.smooth(0.72, 0.8, sp) * 0.85);
+          }
+          // 뒤에서 비추는 차가운 테두리 빛 (얼굴이 어둠에서 떠오른다)
+          const rim = U.smooth(0.72, 0.95, dd) * (1 - U.smooth(0.95, 1, dd)) * U.smooth(-0.6, 0.3, -u * 0.6 + v * 0.2 + 0.2);
+          col = [col[0] + rim * 0.05, col[1] + rim * 0.07, col[2] + rim * 0.1];
           // 얼굴 테두리를 배경에 부드럽게 섞기
           col = mix3(col, bg, U.smooth(0.94, 1, dd));
         }
@@ -501,19 +553,47 @@ const Scare = (() => {
   let active = false;
 
   function face(type, opts = {}) {
-    const dur = opts.dur || 0.9, power = opts.power || 1;
+    const dur = opts.dur || 0.9, power = opts.power || 1, pre = opts.pre || 0;
     if (!Real.faces[type]) { opts.done && opts.done(); return; }
     active = true;
     cv.width = innerWidth; cv.height = innerHeight;
     cv.style.display = 'block';
-    document.body.classList.add('shake');
-    if (opts.scream !== false) SFX.scream(power);
-    SFX.static(dur * 0.8, 0.3 * power);
+    const P = Real.FACE_TYPES[type];
+    // 미리 정해 두는 핏줄기 (화면 위에서 흘러내린다)
+    // 피는 얼굴 자체(눈 밑, 콧구멍, 입꼬리)에서 흘러나온다
+    const bleeds = [];
+    if (opts.blood) {
+      const src = [];
+      for (const sg of [-1, 1]) src.push([sg * P.eyeX + (Math.random() - 0.5) * 0.03, P.eyeY + P.eyeRY * 0.9, 0.02, true]);
+      src.push([0.03, 0.245, 0.18], [-0.03, 0.245, 0.3]);
+      for (const sg of [-1, 1]) {
+        if (P.grin) src.push([sg * P.mouthW * 0.94, P.mouthY - 0.5 * P.mouthW * P.mouthW + 0.02, 0.1]);
+        else src.push([sg * P.mouthW * 0.8, P.mouthY + P.mouthH * 0.6, 0.22]);
+      }
+      for (const [u, v, d, eye] of src) bleeds.push({ u, v, eye, d: d + Math.random() * 0.12, sp: 0.5 + Math.random() * 0.5, w: 0.024 + Math.random() * 0.018, ph: Math.random() * 9, max: 0.35 + Math.random() * 0.45 });
+    }
+    const go = () => {
+      document.body.classList.add('shake');
+      if (opts.scream !== false) SFX.scream(power);
+      SFX.static(dur * 0.8, 0.3 * power);
+    };
+    if (pre) { SFX.whisper(pre + 0.2, 0, 0.35); setTimeout(go, pre * 1000); } else go();
     const t0 = performance.now();
     const f = Real.faces[type], fr = Real.faceRed[type], fc = Real.faceCyan[type];
     const loop = () => {
-      const t = (performance.now() - t0) / 1000, k = t / dur;
+      const tAll = (performance.now() - t0) / 1000;
       const W = cv.width, H = cv.height;
+      if (tAll < pre) {
+        // 어둠 저편에 작은 얼굴이 가만히 서 있다
+        x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
+        const sz = Math.min(W, H) * (0.1 + tAll / pre * 0.05);
+        x.globalAlpha = 0.5 + 0.5 * (tAll / pre);
+        x.drawImage(f, W / 2 - sz / 2, H * 0.45 - sz / 2, sz, sz);
+        x.globalAlpha = 1;
+        requestAnimationFrame(loop);
+        return;
+      }
+      const t = tAll - pre, k = t / dur;
       if (t >= dur) {
         x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
         setTimeout(() => {
@@ -531,16 +611,101 @@ const Scare = (() => {
       const j = (1 - k * 0.6) * Math.min(W, H) * 0.03;
       const jx = (Math.random() - 0.5) * j * 2, jy = (Math.random() - 0.5) * j * 2;
       const cx = W / 2 - size / 2 + jx, cy = H / 2 - size * 0.48 + jy;
+      // 고개가 천천히 꺾인다 (가끔 홱 돌아간다)
+      const rot = Math.sin(t * 2.2) * 0.035 + U.smooth(0.3, 1, k) * 0.13 * (type % 2 ? 1 : -1) + (Math.random() < 0.05 ? (Math.random() - 0.5) * 0.3 : 0);
+      const pcx = W / 2 + jx, pcy = H / 2 + jy;
+      x.save();
+      x.translate(pcx, pcy); x.rotate(rot); x.translate(-pcx, -pcy);
       // 가끔 얼굴이 경련하듯 좌우로 뒤집히거나 옆으로 늘어난다
       const tw = Math.random();
       if (tw < 0.07) { x.save(); x.translate(W, 0); x.scale(-1, 1); x.drawImage(f, W - cx - size, cy, size, size); x.restore(); }
       else if (tw < 0.12) x.drawImage(f, cx - size * 0.08, cy + size * 0.03, size * 1.16, size * 0.94);
       else x.drawImage(f, cx, cy, size, size);
+      if (opts.jaw) {
+        // 턱이 빠지듯 입 아래가 길게 늘어난다
+        const jk = U.smooth(0.25, 0.85, k), fs = f.width, cut = Math.floor((P.mouthY + 1) / 2 * fs - fs * 0.01);
+        if (jk > 0) {
+          const sy = cut / fs * size;
+          x.drawImage(f, 0, cut, fs, fs - cut, cx, cy + sy, size, (fs - cut) / fs * size * (1 + jk * 0.45));
+        }
+      }
+      if (bleeds.length) {
+        // 곱하기로 칠해서 피부 밝기를 따라 어둡고 붉게 스민다
+        x.globalCompositeOperation = 'multiply';
+        x.fillStyle = 'rgb(118,12,14)';
+        for (const b of bleeds) {
+          const L = Math.min(b.max, Math.max(0, k - b.d) * b.sp * 2.4);
+          if (L <= 0) continue;
+          const X0 = cx + (b.u + 1) / 2 * size, Y0 = cy + (b.v + 1) / 2 * size, len = L / 2 * size, w0 = b.w / 2 * size;
+          const xoAt = yy => Math.sin(yy / size * 22 + b.ph) * w0 * 0.7;
+          for (let yy = 0; yy < len; yy += 3) {
+            const ww = w0 * (0.55 + 0.45 * Math.sin(yy / size * 55 + b.ph)) * (1 - yy / len * 0.35);
+            x.fillRect(X0 + xoAt(yy) - ww / 2, Y0 + yy, ww, 4);
+          }
+          x.beginPath(); x.ellipse(X0 + xoAt(len), Y0 + len, w0 * 0.7, w0, 0, 0, Math.PI * 2); x.fill();
+          // 흘러나온 자리는 넓게 번져 있다
+          if (b.eye) {
+            x.globalAlpha = 0.5;
+            x.beginPath(); x.ellipse(X0, Y0 + w0 * 0.6, w0 * 2.2, w0 * 1.3, 0, 0, Math.PI * 2); x.fill();
+            x.globalAlpha = 1;
+          }
+        }
+        // 젖은 피에 맺힌 아주 약한 반사광
+        x.globalCompositeOperation = 'source-over';
+        x.fillStyle = 'rgba(255,150,140,0.08)';
+        for (const b of bleeds) {
+          const L = Math.min(b.max, Math.max(0, k - b.d) * b.sp * 2.4);
+          if (L <= 0) continue;
+          const X0 = cx + (b.u + 1) / 2 * size, Y0 = cy + (b.v + 1) / 2 * size, len = L / 2 * size, w0 = b.w / 2 * size;
+          for (let yy = 0; yy < len; yy += 3) x.fillRect(X0 + Math.sin(yy / size * 22 + b.ph) * w0 * 0.7 - w0 * 0.25, Y0 + yy, Math.max(1, w0 * 0.18), 4);
+        }
+        // 글리치 색감: 핏줄기만 빨강/청록으로 어긋나고, 군데군데 가로로 찢겨 밀린다
+        x.globalCompositeOperation = 'lighter';
+        const gs = size * (0.006 + Math.random() * 0.01);
+        for (const b of bleeds) {
+          const L = Math.min(b.max, Math.max(0, k - b.d) * b.sp * 2.4);
+          if (L <= 0) continue;
+          const X0 = cx + (b.u + 1) / 2 * size, Y0 = cy + (b.v + 1) / 2 * size, len = L / 2 * size, w0 = b.w / 2 * size;
+          for (let yy = 0; yy < len; yy += 4) {
+            const xo = Math.sin(yy / size * 22 + b.ph) * w0 * 0.7, ww = w0 * (0.55 + 0.45 * Math.sin(yy / size * 55 + b.ph));
+            const tear = Math.random() < 0.06 ? (Math.random() - 0.5) * w0 * 8 : 0;
+            x.fillStyle = 'rgba(255,0,36,0.32)'; x.fillRect(X0 + xo - ww / 2 + gs + tear, Y0 + yy, ww, 4);
+            x.fillStyle = 'rgba(0,200,220,0.16)'; x.fillRect(X0 + xo - ww / 2 - gs + tear, Y0 + yy + 1, ww, 4);
+            if (tear) { x.fillStyle = 'rgba(255,40,90,0.45)'; x.fillRect(X0 + xo + tear - ww * 2, Y0 + yy, ww * 4, 2); }
+          }
+          // 가끔 핏줄기 한 토막이 화면 옆으로 통째로 밀린다
+          if (Math.random() < 0.25) {
+            const yy = Math.random() * len, h = 6 + Math.random() * 18;
+            x.fillStyle = Math.random() < 0.5 ? 'rgba(255,0,60,0.5)' : 'rgba(0,255,230,0.3)';
+            x.fillRect(X0 - w0 + (Math.random() - 0.5) * size * 0.08, Y0 + yy, w0 * 2, h);
+          }
+        }
+        x.globalCompositeOperation = 'source-over';
+      }
+      if (P.eyes === 'glow' || P.eyes === 'stare') {
+        // 눈에서 빛이 번진다
+        x.globalCompositeOperation = 'lighter';
+        for (const s of [-1, 1]) {
+          const ex = cx + (s * P.eyeX + 1) / 2 * size, ey = cy + (P.eyeY + 1) / 2 * size, r = size * (P.eyes === 'glow' ? 0.05 : 0.03) * (0.8 + Math.random() * 0.5);
+          const gg = x.createRadialGradient(ex, ey, 0, ex, ey, r);
+          gg.addColorStop(0, P.eyes === 'glow' ? 'rgba(255,230,210,0.55)' : 'rgba(255,60,40,0.3)'); gg.addColorStop(1, 'rgba(255,0,0,0)');
+          x.fillStyle = gg; x.fillRect(ex - r, ey - r, r * 2, r * 2);
+        }
+        x.globalCompositeOperation = 'source-over';
+      }
       x.globalCompositeOperation = 'lighter';
       const split = 6 + Math.random() * 14;
       x.globalAlpha = 0.5; x.drawImage(fr, cx + split, cy, size, size);
       x.globalAlpha = 0.35; x.drawImage(fc, cx - split, cy + split * 0.3, size, size);
       x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+      x.restore();
+      if (dur >= 0.8 && k > 0.5 && k < 0.57) {
+        // 한순간 눈만 화면 가득 다가온다
+        const fs = f.width, sw = fs * 0.62, sh = fs * 0.2, sx = fs * 0.19, sy = (P.eyeY + 1) / 2 * fs - sh / 2;
+        const dh = W * sh / sw;
+        x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
+        x.drawImage(f, sx, sy, sw, sh, (Math.random() - 0.5) * 20, H / 2 - dh / 2, W, dh);
+      }
       // 화면이 찢어지는 줄
       const bands = 2 + Math.floor(Math.random() * 5);
       for (let b = 0; b < bands; b++) {
@@ -565,9 +730,11 @@ const Scare = (() => {
       }
       if (k > 0.4 && Math.random() < 0.25) {
         // 붉은 기운이 화면 아래에서 차오른다
-        const rg = x.createLinearGradient(0, H, 0, H * 0.4);
-        rg.addColorStop(0, 'rgba(120,0,0,0.55)'); rg.addColorStop(1, 'rgba(120,0,0,0)');
+        x.globalCompositeOperation = 'multiply';
+        const rg = x.createLinearGradient(0, H, 0, H * 0.35);
+        rg.addColorStop(0, 'rgb(150,40,40)'); rg.addColorStop(1, 'rgb(255,255,255)');
         x.fillStyle = rg; x.fillRect(0, 0, W, H);
+        x.globalCompositeOperation = 'source-over';
       }
       const vg = x.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
       vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.85)');

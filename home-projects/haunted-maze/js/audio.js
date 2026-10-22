@@ -258,7 +258,7 @@ const SFX = (() => {
 
     // 1단계: 고장 난 오르골
     const melody = [659.3, 587.3, 523.3, 493.9, 523.3, 440, 0, 415.3, 440, 493.9, 329.6, 0, 0];
-    let step = 0;
+    let step = 0, beat = 0, flatT = 0;
     const timer = setInterval(() => {
       if (!ok()) return;
       const now = ctx.currentTime;
@@ -270,6 +270,16 @@ const SFX = (() => {
           o.connect(g); g.connect(bus); o2.connect(g2); g2.connect(bus);
         }
       }
+      if (stage === 1) {
+        // 어딘가에서 심전도 기계가 계속 울린다. 가끔 길게 멈춰 버린다
+        beat++;
+        if (flatT > 0) flatT--;
+        else if (Math.random() < 0.012) { monitor(true); flatT = 6; }
+        else if (beat % 2 === 0) monitor(false);
+      }
+      if (stage === 0 && Math.random() < 0.012) childLaugh(Math.random() * 2 - 1, 0.07);
+      if (stage < 2 && Math.random() < 0.006) scream(0.12); // 아주 먼 곳의 비명
+      if (stage === 2 && Math.random() < 0.03) boneRattle(Math.random() * 2 - 1, 0.06);
       // 아무 이유 없이 멀리서 나는 소리
       const r = Math.random();
       const chance = [0.025, 0.04, 0.06][stage];
@@ -333,6 +343,64 @@ const SFX = (() => {
     n.connect(nb); nb.connect(ng); ng.connect(out(1, pan));
   }
 
+  // 어린아이 웃음소리 "히히히..." (멀리서, 한쪽 귀에서)
+  function childLaugh(pan = 0, vol = 0.12) {
+    if (!ok()) return;
+    const t0 = ctx.currentTime;
+    for (let i = 0; i < 5; i++) {
+      const t = t0 + i * 0.15, f0 = 780 - i * 40 + Math.random() * 30;
+      const o = osc('triangle', f0, t, 0.12);
+      o.frequency.linearRampToValueAtTime(f0 * 1.18, t + 0.03);
+      o.frequency.linearRampToValueAtTime(f0 * 0.9, t + 0.11);
+      const f1 = filt('bandpass', 1800, 4), f2 = filt('bandpass', 2900, 6), g = envGain(t, 0.01, vol * (1 - i * 0.12), 0.12);
+      o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g);
+      const n = noise(t, 0.06), nh = filt('highpass', 3000), ng = envGain(t, 0.004, vol * 0.5, 0.06);
+      n.connect(nh); nh.connect(ng); ng.connect(out(1, pan));
+      g.connect(out(1, pan));
+    }
+  }
+
+  // 뼈가 달그락거리는 소리
+  function boneRattle(pan = 0, vol = 0.2) {
+    if (!ok()) return;
+    const t0 = ctx.currentTime;
+    const n = 4 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i++) {
+      const t = t0 + i * (0.025 + Math.random() * 0.04);
+      const s = noise(t, 0.02), bp = filt('bandpass', 1800 + Math.random() * 2200, 4), g = envGain(t, 0.001, vol * (0.6 + Math.random() * 0.4), 0.025);
+      s.connect(bp); bp.connect(g); g.connect(out(1, pan));
+    }
+  }
+
+  // 휠체어 바퀴가 끼익
+  function squeak(pan = 0, vol = 0.12) {
+    if (!ok()) return;
+    const t = ctx.currentTime, dur = 0.45;
+    const o = osc('sawtooth', 820, t, dur);
+    for (let k = 0; k < dur; k += 0.03) o.frequency.setValueAtTime(820 + Math.sin(k * 40) * 160 + k * 600, t + k);
+    const bp = filt('bandpass', 1500, 9), g = envGain(t, 0.05, vol, dur);
+    o.connect(bp); bp.connect(g); g.connect(out(1, pan));
+  }
+
+  // 심전도 기계 소리 (flat 이면 길게 이어진다)
+  function monitor(flat = false, vol = 0.035) {
+    if (!ok()) return;
+    const t = ctx.currentTime, dur = flat ? 2.6 : 0.09;
+    const o = osc('sine', 1046, t, dur), g = envGain(t, 0.004, vol, dur);
+    o.connect(g); g.connect(out(1, 0.5));
+  }
+
+  // 등 뒤에서 들리는 무거운 숨소리 (들이쉬고 내쉰다)
+  function breath(pan = 0, vol = 0.3) {
+    if (!ok()) return;
+    const t0 = ctx.currentTime;
+    for (let i = 0; i < 2; i++) {
+      const t = t0 + i * 1.3, n = noise(t, 1.1), bp = filt('bandpass', i ? 420 : 650, 1.2), g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol * (i ? 1 : 0.7), t + 0.5); g.gain.linearRampToValueAtTime(0.0001, t + 1.1);
+      n.connect(bp); bp.connect(g); g.connect(out(1, pan));
+    }
+  }
+
   // 촛불이 훅 꺼지는 소리
   function blowout(pan = 0) {
     if (!ok()) return;
@@ -353,5 +421,6 @@ const SFX = (() => {
   }
 
   return { init, scream, stinger, heartbeat, footstep, whoosh, whisper, bang, creak, pickup, thunder, moan, shriek, blowout, setChase,
+    childLaugh, boneRattle, squeak, monitor, breath,
     static: static_, ambient, stopAmbient, setBuzz, toggleMute, get muted() { return muted; } };
 })();

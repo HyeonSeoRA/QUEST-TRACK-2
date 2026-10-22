@@ -520,6 +520,79 @@ const Sprites = (() => {
     return null;
   });
 
+  // ---------- 단계별 소품 ----------
+  // 1단계: 벽에 걸린 초상화 (눈은 게임에서 따로 그려서 나를 따라 움직인다)
+  const portrait = pix((x, y) => {
+    const px = x - 3, py = y;
+    if (px < 0 || px > 13 || py > 15) return null;
+    if (px === 0 || px === 13 || py === 0 || py === 15) return [70, 48, 14];
+    if (px === 1 || px === 12 || py === 1 || py === 14) {
+      const n = 0.75 + U.hash(px, py, 81) * 0.4;
+      return [196 * n, 146 * n, 52 * n];
+    }
+    const fx = (px - 6.5) / 2.4, fy = (py - 6.3) / 3.0;
+    if (fx * fx + fy * fy < 1) {
+      const sh = 0.6 + 0.4 * (1 - fy) * 0.5 + (fx < 0 ? 0.1 : -0.05);
+      return [186 * sh, 170 * sh, 152 * sh];
+    }
+    const hx = (px - 6.5) / 3.6, hy = (py - 5.4) / 4.4;
+    if (hx * hx + hy * hy < 1) return [22, 14, 14];
+    if (py >= 10 && Math.abs(px - 6.5) < (py - 8) * 1.2 + 0.5) return [52 + U.hash(px, py, 82) * 10, 26, 34];
+    const n = 0.7 + U.noise(px * 0.6, py * 0.6, 83) * 0.5;
+    return [34 * n, 30 * n, 24 * n];
+  });
+  const PORTRAIT_EYES = [[8, 6], [12, 6]]; // 왼쪽 눈 흰자 (8,6)(9,6), 오른쪽 (11,6)(12,6)
+
+  // 3단계: 벽에 세워 둔 관 (닫힘 / 열림)
+  const coffinShape = (x, y) => {
+    if (y > 15) return false;
+    const half = y < 4 ? 2.5 + y * 0.9 : 6 - (y - 4) * 0.28;
+    return Math.abs(x - 9.5) < half;
+  };
+  const coffin = [
+    pix((x, y) => {
+      if (!coffinShape(x, y)) return null;
+      if (!coffinShape(x - 1, y) || !coffinShape(x + 1, y) || !coffinShape(x, y - 1) || !coffinShape(x, y + 1)) return [26, 15, 8];
+      if ((x === 9 || x === 10) && y >= 3 && y <= 9) return [170, 130, 50];
+      if (y === 5 && x >= 7 && x <= 12) return [170, 130, 50];
+      const n = 0.75 + U.noise(x * 0.4, y * 1.6, 84) * 0.35 + (x < 9 ? 0.1 : 0);
+      return [84 * n, 54 * n, 32 * n];
+    }),
+    pix((x, y) => {
+      if (!coffinShape(x, y)) return null;
+      if (!coffinShape(x - 1, y) || !coffinShape(x + 1, y) || !coffinShape(x, y - 1) || !coffinShape(x, y + 1)) return [26, 15, 8];
+      // 안쪽: 해골이 이쪽을 보고 있다
+      const sx = (x - 9.5) / 3, sy = (y - 4.5) / 3;
+      if (sx * sx + sy * sy < 1) {
+        if ((x === 8 || x === 11) && y === 4) return [255, 30, 20];
+        if ((x === 8 || x === 11) && (y === 4 || y === 5)) return [6, 2, 2];
+        if (y === 6 && (x === 9 || x === 10)) return [10, 6, 6];
+        const sh = 0.75 + (1 - sy) * 0.15;
+        return [214 * sh, 204 * sh, 182 * sh];
+      }
+      if (y === 8 && x >= 8 && x <= 11 && x % 2 === 0) return [200, 190, 170];
+      if (y >= 9 && y <= 12 && (x === 7 || x === 12)) return [190, 180, 160];
+      if (y >= 9 && y <= 13 && Math.abs(x - 9.5) < 2 && y % 2 === 1) return [170, 160, 140];
+      return [10 + U.hash(x, y, 85) * 8, 4, 4];
+    }),
+  ];
+
+  // 2단계: 저절로 굴러다니는 휠체어
+  const wheelchair = pix((x, y) => {
+    const wd = Math.hypot(x - 7.5, y - 14.5), sw = Math.hypot(x - 14.5, y - 17);
+    if (wd < 4.6 && wd > 3.4) return [70, 74, 82];
+    if (wd < 1 || (wd < 3.4 && (Math.abs(x - 7.5) < 0.6 || Math.abs(y - 14.5) < 0.6))) return [130, 136, 146];
+    if (sw < 1.6) return sw < 0.8 ? [40, 42, 46] : [90, 94, 102];
+    if (y >= 10 && y <= 11 && x >= 6 && x <= 15) return y === 10 ? [92, 40, 40] : [60, 26, 26];
+    if (x >= 6 && x <= 7 && y >= 4 && y <= 10) return [150, 156, 166];
+    if (x === 5 && y === 4) return [150, 156, 166];
+    if (x >= 8 && x <= 9 && y >= 5 && y <= 9) return [74, 30, 30];
+    if (y === 12 && x >= 7 && x <= 15) return [120, 126, 136];
+    if (x === 15 && y >= 12 && y <= 15) return [120, 126, 136];
+    if (x >= 10 && x <= 12 && y === 9 && U.hash(x, y, 86) < 0.8) return [110, 6, 10];
+    return null;
+  });
+
   // ---------- 단계별 바닥과 벽 ----------
   function tilesFor(stage) {
     const floor = [], wall = [], front = [];
@@ -612,7 +685,7 @@ const Sprites = (() => {
   return {
     S, pix, flip,
     player: { d: playerDown, u: playerUp, r: playerRight, l: flip(playerRight) },
-    ghost, stalker: boneStalker, woman, patient, skeleton, eyes, key, pumpkin, candle, skull, bones, hand, trapdoor, trapGlow,
+    ghost, stalker: boneStalker, woman, patient, skeleton, eyes, key, portrait, PORTRAIT_EYES, coffin, wheelchair, pumpkin, candle, skull, bones, hand, trapdoor, trapGlow,
     blood: [blood(3), blood(17), blood(31), blood(55)],
     tilesFor,
   };

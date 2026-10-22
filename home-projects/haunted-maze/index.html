@@ -42,6 +42,12 @@
   nav button { font-family: 'Nanum Myeongjo', serif; font-size: 22px; letter-spacing: 6px; padding: 10px 30px; color: #b8b0a8;
     text-shadow: 0 2px 6px #000; transition: color .2s, letter-spacing .3s, text-shadow .2s; }
   nav button:hover { color: #ff2a2a; letter-spacing: 9px; text-shadow: 0 0 14px #a00010; }
+  #dailyNote { color: #7a3a36; font-size: 12px; margin: -4px 0 6px; letter-spacing: 1px; text-shadow: 0 1px 4px #000; }
+  .rtabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 6px; }
+  .rtab { padding: 4px 14px; border: 1px solid #3a1010; color: #8a8078; font-size: 13px; }
+  .rtab.on { color: #ff4a4a; border-color: #8a0010; }
+  #rankNote { text-align: center; font-size: 12px; color: #6a605a; margin: 0 0 8px; }
+  #cardInner .curse { color: #b02020; font-size: 14px; margin-top: 14px; letter-spacing: 2px; animation: flick 3s infinite; }
   #best { margin-top: 26px; color: #8a7e74; font-size: 14px; text-shadow: 0 1px 4px #000; }
   #muteBtn { position: fixed; right: 14px; bottom: 12px; z-index: 5; color: #6a625a; font-size: 13px; }
   .note { position: fixed; left: 0; right: 0; bottom: 14px; color: #4f4842; font-size: 12px; }
@@ -143,6 +149,8 @@
   <div class="title"><h1>망령의 미로</h1><div class="en">HAUNTED MAZE</div></div>
   <nav>
     <button data-act="start">들어가기</button>
+    <button data-act="daily">오늘의 악몽</button>
+    <div id="dailyNote"></div>
     <button data-act="ranks">순위표</button>
     <button data-act="howto">하는 방법</button>
   </nav>
@@ -168,6 +176,15 @@
       <li><b>2단계 폐쇄 병동</b> — 미로가 넓어지고 더 어두워집니다. 환자 3명은 더 빠르고 더 멀리서 알아챕니다.</li>
       <li><b>3단계 지하 납골당</b> — 해골 병사 1명과 누런 해골 "그것"이 나옵니다. 가장 어둡고 손전등이 가끔 꺼집니다. <b>"그것"</b>은 빛이 닿지 않을 때만 움직입니다. 손전등을 고정하고 노려보세요.</li>
     </ul>
+    <h3>단계마다 다른 장치</h3>
+    <ul>
+      <li><b>1단계</b> 들뜬 널빤지(검게 금 간 마루)를 밟으면 삐걱 소리에 근처 유령이 몰려옵니다.</li>
+      <li><b>2단계</b> 복도의 철제 셔터가 4초마다 닫힙니다. 빨간 불이 깜빡이면 곧 닫힙니다. 유령도 지나가지 못합니다.</li>
+      <li><b>3단계</b> "그것"을 손전등으로 붙잡아 두세요.</li>
+      <li>어디서든 너무 오래 가만히 있으면 무언가가 다가옵니다.</li>
+    </ul>
+    <h3>오늘의 악몽</h3>
+    <p>날마다 미로와 "저주"(짙은 안개, 굶주린 밤, 정전, 핏빛 달, 고요 중 하나)가 바뀝니다. 같은 날에는 모두 같은 미로라서, 오늘의 순위표에서 따로 겨룹니다.</p>
     <h3>점수</h3>
     <ul>
       <li>단계 통과: 1단계 1,000 · 2단계 2,500 · 3단계 5,000점</li>
@@ -186,6 +203,8 @@
 <section id="ranks" class="screen panel">
   <div class="box">
     <h2>순위표</h2>
+    <div class="rtabs"><button class="rtab on" data-m="normal">정규전</button><button class="rtab" data-m="daily">오늘의 악몽</button></div>
+    <p id="rankNote"></p>
     <table>
       <thead><tr><th>순위</th><th>이름</th><th>점수</th><th>결과</th><th>시간</th></tr></thead>
       <tbody id="rankBody"></tbody>

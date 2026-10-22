@@ -14,31 +14,42 @@ function show(id) {
 }
 
 // ---------- 순위표 (이 브라우저에 저장) ----------
-function loadScores() {
-  try { return JSON.parse(localStorage.getItem(SCORE_KEY)) || []; } catch (e) { return []; }
+// 오늘 날짜 (예: 20261022). 같은 날에는 모두 같은 '오늘의 악몽' 미로를 탄다
+const today = () => { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); };
+let mode = 'normal', rankMode = 'normal';
+const keyFor = m => (m === 'daily' ? 'haunted-maze-daily-' + today() : SCORE_KEY);
+function loadScores(m = 'normal') {
+  try { return JSON.parse(localStorage.getItem(keyFor(m))) || []; } catch (e) { return []; }
 }
-function saveScore(entry) {
-  const list = loadScores();
+function saveScore(entry, m = 'normal') {
+  const list = loadScores(m);
   list.push(entry);
   list.sort((a, b) => b.score - a.score || a.time - b.time);
   const top = list.slice(0, 10);
-  try { localStorage.setItem(SCORE_KEY, JSON.stringify(top)); } catch (e) { /* 저장 못 해도 게임은 계속 */ }
+  try { localStorage.setItem(keyFor(m), JSON.stringify(top)); } catch (e) { /* 저장 못 해도 게임은 계속 */ }
   return top.indexOf(entry);
 }
 const fmtTime = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}.${Math.floor((t * 10) % 10)}`;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-function renderRanks(highlight = -1) {
-  const list = loadScores();
+function renderRanks(highlight = -1, m = rankMode) {
+  rankMode = m;
+  document.querySelectorAll('.rtab').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  const c = Game.dailyCurse(today());
+  $('rankNote').textContent = m === 'daily' ? `${String(today()).replace(/(\d{4})(\d{2})(\d{2})/, '$1.$2.$3')} 오늘의 악몽 · 저주: ${c.name}` : '고정 미로 · 언제나 같은 미로에서 겨룹니다';
+  const list = loadScores(m);
   const body = list.length ? list.map((r, i) => `
     <tr class="${i === highlight ? 'me' : ''}">
       <td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.score.toLocaleString()}</td>
       <td>${r.cleared ? '탈출' : r.reached + '단계'}</td><td>${fmtTime(r.time)}</td>
     </tr>`).join('') : '<tr><td colspan="5" class="empty">아직 아무도 살아 나오지 못했다</td></tr>';
   $('rankBody').innerHTML = body;
-  const best = list[0];
+  const best = loadScores('normal')[0];
   $('best').textContent = best ? `최고 기록 · ${best.name} ${best.score.toLocaleString()}점` : '';
+  const dc = Game.dailyCurse(today());
+  $('dailyNote').textContent = `오늘의 저주 · ${dc.name} — ${dc.desc}`;
 }
+document.querySelectorAll('.rtab').forEach(b => b.addEventListener('click', () => renderRanks(-1, b.dataset.m)));
 
 // ---------- 메뉴 배경 ----------
 const menu = {
@@ -184,7 +195,7 @@ let cardNext = null, cardReady = 0;
 function card(html, opts = {}) {
   $('cardInner').innerHTML = html;
   // 검은 화면 뒤에서 희미하게 숨 쉬는 얼굴
-  const cf = $('cardFace'), face = Real.faces[opts.face === undefined ? Math.floor(Math.random() * 3) : opts.face];
+  const cf = $('cardFace'), face = Real.faces[opts.face === undefined ? Math.floor(Math.random() * Real.faces.length) : opts.face];
   if (face) {
     cf.width = face.width; cf.height = face.height;
     cf.getContext('2d').drawImage(face, 0, 0);
@@ -211,7 +222,8 @@ addEventListener('keydown', e => {
 
 const callbacks = {
   onStageIntro(S, go) {
-    card(`<div class="stageNo">${S.name}</div><h2>${S.title}</h2><p class="sub">${S.sub}</p>`, { solid: true, auto: 1800, next: go, wait: 300, face: S.faceType });
+    const curse = S.curse ? `<p class="curse">오늘의 저주 · ${S.curse.name} — ${S.curse.desc}</p>` : '';
+    card(`<div class="stageNo">${S.name}</div><h2>${S.title}</h2><p class="sub">${S.sub}</p>${curse}`, { solid: true, auto: S.curse ? 2400 : 1800, next: go, wait: 300, face: S.faceType });
     SFX.bang(0.5);
   },
   onStageClear(res, info, go) {
@@ -224,16 +236,16 @@ const callbacks = {
       <p class="hint">${info.last ? '계단이 보인다... 클릭하면 밖으로 나간다' : '아래로 내려가는 계단이 있다 · 클릭 또는 Enter'}</p>`;
     card(html, { solid: true, next: go, wait: 400 });
   },
-  onCaught(livesLeft, go) {
-    if (livesLeft > 0) card(`<h2 class="red">잡혔다</h2><p class="sub">남은 목숨 ${livesLeft}개</p><p class="hint">클릭 또는 Enter 로 다시 일어난다</p>`, { solid: true, next: go, wait: 500 });
-    else card(`<h2 class="red">너도 이제 여기 산다</h2><p class="hint">클릭 또는 Enter</p>`, { solid: true, next: go, wait: 700 });
+  onCaught(livesLeft, go, face) {
+    if (livesLeft > 0) card(`<h2 class="red">잡혔다</h2><p class="sub">남은 목숨 ${livesLeft}개</p><p class="hint">클릭 또는 Enter 로 다시 일어난다</p>`, { solid: true, next: go, wait: 500, face });
+    else card(`<h2 class="red">너도 이제 여기 산다</h2><p class="hint">클릭 또는 Enter</p>`, { solid: true, next: go, wait: 700, face });
   },
   onPause(on) { show(on ? 'pause' : 'game'); },
   onGameOver(r) {
     if (r.cleared) {
       // 끝난 줄 알았지?
       card(`<h2>탈출했다</h2><p class="sub">차가운 밤공기가 느껴진다...</p>`, { solid: true });
-      setTimeout(() => Scare.face(2, { dur: 1.6, power: 1.3, text: '정말 나갔다고 생각해?', hold: 500, done: () => showResult(r) }), 1500);
+      setTimeout(() => Scare.face(2, { dur: 1.6, power: 1.3, text: '정말 나갔다고 생각해?', jaw: true, blood: true, hold: 500, done: () => showResult(r) }), 1500);
     } else showResult(r);
   },
 };
@@ -256,20 +268,21 @@ $('saveBtn').addEventListener('click', () => {
   const name = ($('nameIn').value.trim() || '이름없음').slice(0, 10);
   try { localStorage.setItem('haunted-maze-name', name); } catch (e) { /* 무시 */ }
   const r = lastResult;
-  const pos = saveScore({ name, score: r.score, reached: r.reached, cleared: r.cleared, time: r.time, date: Date.now() });
+  const pos = saveScore({ name, score: r.score, reached: r.reached, cleared: r.cleared, time: r.time, date: Date.now() }, mode);
   $('saveBtn').disabled = true;
-  renderRanks(pos);
+  renderRanks(pos, mode);
   show('ranks');
 });
 $('nameIn').addEventListener('keydown', e => { if (e.code === 'Enter') $('saveBtn').click(); e.stopPropagation(); });
 $('skipBtn').addEventListener('click', () => { renderRanks(); show('menu'); });
 
 // ---------- 버튼 ----------
-function startGame() {
+function startGame(m = 'normal') {
+  mode = m;
   SFX.init();
   show('game');
   fitView();
-  Game.start(callbacks);
+  Game.start(callbacks, m === 'daily' ? { daily: today() } : {});
 }
 document.querySelectorAll('[data-act]').forEach(b => {
   b.addEventListener('mouseenter', () => { SFX.whisper(0.5, (Math.random() - 0.5), 0.08); if (b.dataset.act === 'start') menu.hoverOn = true; });
@@ -277,7 +290,8 @@ document.querySelectorAll('[data-act]').forEach(b => {
   b.addEventListener('click', () => {
     const a = b.dataset.act;
     SFX.init();
-    if (a === 'start') startGame();
+    if (a === 'start') startGame('normal');
+    if (a === 'daily') startGame('daily');
     if (a === 'ranks') { renderRanks(); show('ranks'); }
     if (a === 'howto') show('howto');
     if (a === 'back') show('menu');
