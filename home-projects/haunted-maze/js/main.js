@@ -21,13 +21,19 @@ const keyFor = m => (m === 'daily' ? 'haunted-maze-daily-' + today() : SCORE_KEY
 function loadScores(m = 'normal') {
   try { return JSON.parse(localStorage.getItem(keyFor(m))) || []; } catch (e) { return []; }
 }
+// 같은 이름은 한 줄만 남긴다 (대소문자·앞뒤 공백 무시). 점수가 높은 기록, 같으면 더 빠른 기록이 이긴다
+const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+const better = (a, b) => b.score - a.score || a.time - b.time;
 function saveScore(entry, m = 'normal') {
   const list = loadScores(m);
   list.push(entry);
-  list.sort((a, b) => b.score - a.score || a.time - b.time);
-  const top = list.slice(0, 10);
+  list.sort(better);
+  const uniq = [];
+  for (const r of list) if (!uniq.some(u => sameName(u.name, r.name))) uniq.push(r);
+  const top = uniq.slice(0, 10);
   try { localStorage.setItem(keyFor(m), JSON.stringify(top)); } catch (e) { /* 저장 못 해도 게임은 계속 */ }
-  return top.indexOf(entry);
+  // 이번 기록이 예전 최고 기록보다 낮으면, 그 이름의 최고 기록 줄을 표시한다
+  return top.findIndex(r => sameName(r.name, entry.name));
 }
 const fmtTime = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}.${Math.floor((t * 10) % 10)}`;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
