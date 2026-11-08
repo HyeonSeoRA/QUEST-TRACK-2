@@ -10,13 +10,13 @@ class Boot extends Phaser.Scene {
     loadFonts(allGameText()).then(() => {
       this.time.delayedCall(30, () => {
         buildAllArt(this);
-        ensureTheme(this, 'forest');
+        if (!W3.init()) ensureTheme(this, 'forest');
         t.destroy();
         const q = new URLSearchParams(location.search);
         if (q.has('play')) {   // 시험용 주소: ?play=스테이지번호&diff=hard&auto&seek=초
           if (!Store.s) Store.data.save = newSave();
           if (q.has('lv')) Store.s.lv = +q.get('lv');
-          this.scene.start('Play', { stage: +q.get('play') || 0, diff: q.get('diff') || 'normal', auto: q.has('auto'), seek: +q.get('seek') || 0 });
+          this.scene.start('Play', { stage: +q.get('play') || 0, diff: q.get('diff') || 'normal', auto: q.has('auto'), seek: +q.get('seek') || 0, practice: q.has('practice') });
         } else if (q.has('scene')) { if (!Store.s) Store.data.save = newSave(); this.scene.start(q.get('scene'), {}); }
         else this.scene.start('Title');
       });
@@ -25,33 +25,145 @@ class Boot extends Phaser.Scene {
 }
 
 /* ================= 공통 창: 설정 / 상태 / 장비 / 상점 ================= */
-function openSettings(scene, stack, onClose) {
+const SET_HELP = {
+  speed: '노트가 달려오는 빠르기예요. 잘 안 보이면 낮추고, 촘촘하면 올려요.',
+  offset: '늘 늦게(SLOW) 친다고 나오면 + 로, 일찍(FAST)이면 - 로 옮겨요.',
+  calib: '딸깍 소리에 맞춰 키를 누르면 판정을 자동으로 맞춰 줘요.',
+  vol: '배경 음악과 노래 소리 크기예요. ← 줄이기 · → 늘리기 (마우스는 ◀ ▶ 쪽 누르기)',
+  sfx: '칼 소리, 메뉴 소리 같은 효과음 크기예요. ← 줄이기 · → 늘리기',
+  gfx: '선명하게: 모니터 해상도 그대로 · 렉이 있으면 보통이나 빠르게로.',
+  use3d: '끄면 가벼운 2.5D 그림 배경으로 바뀌어요. (설정을 닫으면 다시 불러와요)',
+  hd3d: '고화질: 3D 세계를 2배 곱게 · 도트: 굵은 도트 느낌. (설정을 닫으면 다시 불러와요)',
+  shake: '맞거나 보스가 등장할 때 화면이 흔들리는 효과예요.',
+  meter: '전투 화면 아래에 내가 친 타이밍이 빨랐는지 늦었는지 막대로 보여 줘요.',
+  keys: '공중 줄과 땅 줄을 칠 키를 바꿔요. (↑ ↓ 방향키는 늘 쓸 수 있어요)',
+  full: '화면을 꽉 채워요. (Esc 로도 나올 수 있어요)',
+  back: '설정을 저장하고 닫아요.',
+};
+function openSettings(scene, stack, onClose, o = {}) {
   const st = Store.data.settings;
-  const dim = modalDim(scene, 249);
-  const win = Win(scene, 130, 64, 220, 128, { depth: 250, title: '설정' });
-  const gfx0 = st.gfx;
+  const D = o.depth || 250;   // 일시정지 창 위에서도 열 수 있게 깊이를 받아요
+  const dim = modalDim(scene, D - 1);
+  const win = Win(scene, 120, 14, 240, 244, { depth: D, title: '설정' });
+  const onoff = v => v ? '켜기' : '끄기';
   const items = () => [
     { text: '노트 속도', right: `◀ ${st.speed.toFixed(1)} ▶`, k: 'speed' },
     { text: '판정 맞추기', right: `◀ ${st.offset >= 0 ? '+' : ''}${st.offset}ms ▶`, k: 'offset' },
-    { text: '소리 크기', right: `◀ ${st.vol} ▶`, k: 'vol' },
+    ...(o.inGame ? [] : [{ text: '자동 판정 맞추기', right: 'Enter', k: 'calib' }]),
+    { text: '음악 크기', right: `◀ ${st.vol} ▶`, k: 'vol' },
+    { text: '효과음 크기', right: `◀ ${st.sfx} ▶`, k: 'sfx' },
     { text: '그래픽', right: `◀ ${['빠르게', '보통', '선명하게'][st.gfx]} ▶`, k: 'gfx' },
+    ...(o.inGame ? [] : [{ text: '3D 배경', right: `◀ ${onoff(st.use3d !== false)} ▶`, k: 'use3d' }, { text: '3D 화질', right: `◀ ${st.hd3d === false ? '도트' : '고화질'} ▶`, k: 'hd3d' }]),
+    { text: '화면 흔들림', right: `◀ ${onoff(st.shake)} ▶`, k: 'shake' },
+    { text: '타이밍 막대', right: `◀ ${onoff(st.meter)} ▶`, k: 'meter' },
+    ...(o.inGame ? [] : [{ text: '키 바꾸기', right: `${keyName(st.keys.air[0])} ${keyName(st.keys.air[1])} / ${keyName(st.keys.gnd[0])} ${keyName(st.keys.gnd[1])}`, k: 'keys' }]),
+    { text: '전체 화면', right: scene.scale.isFullscreen ? '켜짐' : '꺼짐', k: 'full' },
     { text: '돌아가기', k: 'back' },
   ];
-  const help = tx(scene, 240, 176, '판정 맞추기: 늘 늦게 친다고 나오면 + 로 올려요', { size: 8, ox: 0.5, color: '#9a92c0' }).setDepth(252);
-  const close = () => { m.destroy(); win.destroy(); help.destroy(); dim.destroy(); Store.save(); if (st.gfx !== gfx0) { location.reload(); return; } if (onClose) onClose(); };
-  const m = new Menu(scene, 142, 78, 196, items(), {
-    depth: 250, stack,
-    onSide: (d, it) => {
-      if (it.k === 'speed') st.speed = clamp(Math.round((st.speed + d * 0.5) * 10) / 10, 1.5, 6);
-      else if (it.k === 'offset') st.offset = clamp(st.offset + d * 5, -200, 200);
-      else if (it.k === 'vol') { st.vol = clamp(st.vol + d, 0, 10); AE.setVolume(st.vol); }
-      else if (it.k === 'gfx') st.gfx = clamp(st.gfx + d, 0, 2);
+  const help = tx(scene, 240, 230, '', { size: 8, ox: 0.5, color: '#9a92c0', wrap: 220, align: 'center', ls: 2 }).setDepth(D + 2);
+  const use0 = st.use3d !== false, hd0 = st.hd3d !== false;
+  const close = () => { m.destroy(); win.destroy(); help.destroy(); dim.destroy(); Store.save(); if ((st.use3d !== false) !== use0 || (st.hd3d !== false) !== hd0) { location.reload(); return; } if (onClose) onClose(); };
+  const redraw = () => { const i = m.i; m.setItems(items()); m.i = i; m.draw(); };
+  const m = new Menu(scene, 132, 28, 216, items(), {
+    depth: D, stack, rowH: 15,
+    onMove: it => help.setText(SET_HELP[it.k] || ''),
+    // d: -1 줄이기, +1 늘리기. wrap 이면 끝에서 처음으로 돌아가요 (Enter 로 계속 누를 때)
+    onSide: (d, it, wrap) => {
+      const step = (v, lo, hi, by) => { const n = Math.round((v + d * by) * 10) / 10; return wrap && n > hi ? lo : clamp(n, lo, hi); };
+      if (it.k === 'speed') st.speed = step(st.speed, 1.5, 6, 0.5);
+      else if (it.k === 'offset') st.offset = step(st.offset, -200, 200, 5);
+      else if (it.k === 'vol') { st.vol = step(st.vol, 0, 10, 1); AE.setVolume(st.vol); }
+      else if (it.k === 'sfx') { st.sfx = step(st.sfx, 0, 10, 1); AE.setSfx(st.sfx); }
+      else if (it.k === 'gfx') { st.gfx = step(st.gfx, 0, 2, 1); applyRes(); }
+      else if (it.k === 'shake') { st.shake = !st.shake; applyShake(scene); }
+      else if (it.k === 'use3d') st.use3d = st.use3d === false;
+      else if (it.k === 'hd3d') st.hd3d = st.hd3d === false;
+      else if (it.k === 'meter') st.meter = !st.meter;
       else return;
-      AE.ui(); const i = m.i; m.setItems(items()); m.i = i; m.draw();
+      Store.save(); AE.ui(); redraw();
     },
-    onOk: it => { if (it.k === 'back') { AE.ui('back'); close(); } else m.o.onSide(1, it); },
+    onOk: it => {
+      if (it.k === 'back') { AE.ui('back'); close(); }
+      else if (it.k === 'calib') { AE.ui('open'); openCalib(scene, stack, redraw); }
+      else if (it.k === 'keys') { AE.ui('open'); openKeys(scene, stack, redraw); }
+      else if (it.k === 'full') { scene.scale.toggleFullscreen(); AE.ui('ok'); scene.time.delayedCall(300, redraw); }
+      else m.o.onSide(1, it, true);
+    },
+    // 마우스: 줄의 왼쪽 반(◀)을 누르면 줄이고, 오른쪽 반(▶)을 누르면 늘려요
+    onClick: (it, i, p) => {
+      if (['speed', 'offset', 'vol', 'sfx', 'gfx', 'shake', 'meter', 'use3d', 'hd3d'].includes(it.k)) m.o.onSide(p.worldX < m.x + m.w / 2 ? -1 : 1, it);
+      else m.ok();
+    },
     onBack: close,
   });
+}
+
+/* 자동 판정 맞추기: 딸깍 소리 8번에 맞춰 누르면, 평균적으로 얼마나 늦게/일찍 누르는지 재서 맞춰 줘요 */
+function openCalib(scene, stack, onDone) {
+  AE.init();
+  const st = Store.data.settings, N = 8, gap = 0.6;
+  const dim = modalDim(scene, 299);
+  const win = Win(scene, GW / 2 - 110, 70, 220, 120, { depth: 300, title: '자동 판정 맞추기' });
+  const info = tx(scene, GW / 2, 92, '딸깍 소리에 맞춰 아무 키나\n8번 눌러 주세요  (Esc: 취소)', { size: 9, ox: 0.5, align: 'center', ls: 4 }).setDepth(302);
+  const dots = scene.add.graphics().setDepth(302);
+  const ring = scene.add.image(GW / 2, 150, 'ring').setScale(0.3).setTint(0xffe08a).setDepth(302).setBlendMode('ADD');
+  const res = tx(scene, GW / 2, 176, '', { size: 9, ox: 0.5, color: '#9dffa0' }).setDepth(302);
+  const start = AE.now() + 1.0, clicks = [];
+  for (let i = 0; i < N + 6; i++) { const t = start + i * gap; clicks.push(t); AE.tone(t, 'square', 1760, 1760, 0.1, 0.05, AE.sfx); }
+  const diffs = [];
+  let done = false;
+  const draw = () => { dots.clear(); for (let i = 0; i < N; i++) dots.fillStyle(i < diffs.length ? 0xffe08a : 0x3a3860, 1).fillCircle(GW / 2 - 42 + i * 12, 128, 3); };
+  draw();
+  const tick = scene.time.addEvent({ delay: 16, loop: true, callback: () => {
+    const now = AE.now() - AE.latency();
+    const k = clicks.findIndex(t => t > now - 0.3);
+    const ph = k >= 0 ? clamp(1 - Math.abs(now - clicks[k]) / 0.3, 0, 1) : 0;
+    ring.setScale(0.24 + ph * 0.14).setAlpha(0.3 + ph * 0.7);
+  } });
+  const close = () => { tick.remove(); [win, info, dots, ring, res, dim].forEach(x => x.destroy()); scene.input.off('pointerdown', ptr); stack.pop(h); if (onDone) onDone(); };
+  const hitNow = () => {
+    if (done) return;
+    const t = AE.now() - AE.latency();
+    let best = 9; for (const c of clicks) if (Math.abs(t - c) < Math.abs(best)) best = t - c;
+    if (Math.abs(best) > 0.3) return;
+    diffs.push(best); AE.ui('move'); draw();
+    if (diffs.length >= N) {
+      done = true;
+      const s = diffs.slice().sort((a, b) => a - b), med = (s[3] + s[4]) / 2;
+      st.offset = clamp(Math.round(med * 1000 / 5) * 5, -200, 200); Store.save();
+      res.setText(`판정 맞추기를 ${st.offset >= 0 ? '+' : ''}${st.offset}ms 로 정했어요!`);
+      AE.ui('ok'); scene.time.delayedCall(1600, close);
+    }
+  };
+  const ptr = () => { if (stack.top() === h) hitNow(); };
+  scene.input.on('pointerdown', ptr);
+  const h = { key: c => { if (c === 'Escape') { AE.ui('back'); done = true; close(); } else hitNow(); } };
+  stack.push(h);
+}
+
+/* 키 바꾸기: 공중 키 2개, 땅 키 2개를 차례로 눌러 정해요 */
+function openKeys(scene, stack, onDone) {
+  const st = Store.data.settings;
+  const steps = ['공중 줄 키 (1번째)', '공중 줄 키 (2번째)', '땅 줄 키 (1번째)', '땅 줄 키 (2번째)'];
+  const got = [];
+  const dim = modalDim(scene, 299);
+  const win = Win(scene, GW / 2 - 110, 80, 220, 96, { depth: 300, title: '키 바꾸기' });
+  const t1 = tx(scene, GW / 2, 104, '', { size: 11, bold: true, ox: 0.5, color: '#ffe8b0' }).setDepth(302);
+  const t2 = tx(scene, GW / 2, 124, '', { size: 9, ox: 0.5 }).setDepth(302);
+  const t3 = tx(scene, GW / 2, 156, 'Esc: 취소  (Space, Enter, 방향키는 쓸 수 없어요)', { size: 7, ox: 0.5, color: '#9a92c0' }).setDepth(302);
+  const show = () => { t1.setText(`${steps[got.length]} 를 눌러 주세요`); t2.setText(got.length ? '고른 키:  ' + got.map(keyName).join('  ') : ''); };
+  show();
+  const close = () => { [dim, win, t1, t2, t3].forEach(x => x.destroy()); stack.pop(h); if (onDone) onDone(); };
+  const h = { key: c => {
+    if (c === 'Escape') { AE.ui('back'); close(); return; }
+    if (['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Backspace'].includes(c) || got.includes(c)) { AE.ui('no'); return; }
+    got.push(c); AE.ui('move');
+    if (got.length < 4) { show(); return; }
+    st.keys = { air: got.slice(0, 2), gnd: got.slice(2, 4) }; Store.save(); AE.ui('ok');
+    toast(scene, `키를 바꿨어요:  공중 ${keyName(got[0])} ${keyName(got[1])} · 땅 ${keyName(got[2])} ${keyName(got[3])}`);
+    close();
+  } };
+  stack.push(h);
 }
 
 function statLines(sv, cmp) {
@@ -380,8 +492,12 @@ class WorldMap extends Phaser.Scene {
     fitCam(this);
     const sv = Store.s;
     buildWorldMap(this);
+    W3.hide();
     AE.init(); playBgm('map');
     this.add.image(0, 0, 'worldmap').setOrigin(0).setDepth(-10);
+    // 지도 위 구름은 2.5D 숲 배경의 구름 그림을 써요. 3D 를 쓰면 처음에 안 만들어 두므로 여기서 꼭 만들어요
+    // (없으면 Phaser 가 '그림 없음' 표시인 대각선 그어진 초록 상자를 그려요)
+    ensureTheme(this, 'forest');
     this.clouds = this.add.tileSprite(0, 0, GW, 120, 'bg_forest_cloud').setOrigin(0).setAlpha(0.28).setDepth(40);
     this.clouds2 = this.add.tileSprite(0, 150, GW, 120, 'bg_forest_cloud').setOrigin(0).setAlpha(0.18).setDepth(40);
     ensureVignette(this); this.add.image(0, 0, 'vignette').setOrigin(0).setDepth(45);
@@ -402,7 +518,7 @@ class WorldMap extends Phaser.Scene {
     this.lvT = tx(this, GW - 120, 21, '', { size: 9, oy: 0.5 }).setDepth(102);
     this.infoWin = Win(this, 8, GH - 48, GW - 16, 42, { depth: 100, pop: false });
     this.info = [];
-    tx(this, GW - 18, GH - 42, '←→ 이동   Enter 선택   Esc 메뉴', { size: 8, ox: 1, color: '#9a92c0' }).setDepth(102);
+    tx(this, GW - 18, GH - 42, '←→ 이동   Enter 선택   T 마을   Esc 메뉴', { size: 8, ox: 1, color: '#9a92c0' }).setDepth(102);
     this.stack = new UIStack(this);
     this.stack.push({ key: c => this.key(c) });
     this.input.on('pointerdown', p => {
@@ -481,22 +597,24 @@ class WorldMap extends Phaser.Scene {
       AE.ui('ok');
       if (this.idx === 0) { Store.save(); goScene(this, 'Town', {}); return; }
       this.stageWindow(this.idx - 1);
-    } else if (BACK_KEYS.includes(c)) this.sysMenu();
+    } else if (c === 'KeyT') { if (this.idx !== 0) { AE.ui('ok'); this.walkTo(0); } }   // T: 마을로 바로 가기
+    else if (BACK_KEYS.includes(c)) this.sysMenu();
   }
   stageWindow(si) {
     const st = STAGES[si];
     const dim = modalDim(this, 199);
-    const win = Win(this, GW / 2 - 100, 80, 200, 92, { depth: 200, title: `${st.id}  ${st.name}` });
+    const win = Win(this, GW / 2 - 100, 76, 200, 110, { depth: 200, title: `${st.id}  ${st.name}` });
     const m = new Menu(this, GW / 2 - 88, 96, 176, [
       { text: '보통으로 출격', right: '보상 x1', k: 'normal' },
       { text: '어려움으로 출격', right: '보상 x1.5', k: 'hard', color: '#ffb0b0' },
+      { text: '연습하기', right: '지지 않음 · 보상 없음', k: 'practice', color: '#b0e0ff' },
       { text: '취소', k: 'no' },
     ], {
       depth: 200, stack: this.stack, rowH: 20,
       onOk: it => {
         if (it.k === 'no') { AE.ui('back'); m.destroy(); win.destroy(); dim.destroy(); return; }
         AE.ui('ok'); Store.s.node = this.idx; Store.save(); stopBgm(0.5);
-        const play = ['Play', { stage: si, diff: it.k }];
+        const play = ['Play', { stage: si, diff: it.k === 'practice' ? 'normal' : it.k, practice: it.k === 'practice' }];
         const sid = STORY_BEFORE[st.id];
         if (sid && !Store.s.seen[sid]) goScene(this, 'Story', { id: sid, next: play });
         else goScene(this, ...play);

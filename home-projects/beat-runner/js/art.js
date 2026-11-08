@@ -530,9 +530,12 @@ function buildFx(scene) {
     t.refresh();
   }
   { // 줄 뒤 어두운 띠
-    const t = scene.textures.createCanvas('laneDark', 4, 48), c = t.getContext();
+    const t = scene.textures.createCanvas('laneDark', 64, 48), c = t.getContext();
     const g = c.createLinearGradient(0, 0, 0, 48); g.addColorStop(0, 'rgba(6,4,16,0)'); g.addColorStop(0.5, 'rgba(6,4,16,0.34)'); g.addColorStop(1, 'rgba(6,4,16,0)');
-    c.fillStyle = g; c.fillRect(0, 0, 4, 48); t.refresh();
+    c.fillStyle = g; c.fillRect(0, 0, 64, 48);
+    // 왼쪽 끝은 부드럽게 사라지게 (딱 잘린 경계가 안 보이게)
+    const h = c.createLinearGradient(0, 0, 16, 0); h.addColorStop(0, 'rgba(0,0,0,1)'); h.addColorStop(1, 'rgba(0,0,0,0)');
+    c.globalCompositeOperation = 'destination-out'; c.fillStyle = h; c.fillRect(0, 0, 16, 48); t.refresh();
   }
   { // 줄 띠 (판정선에서 오른쪽으로 옅어짐)
     const t = scene.textures.createCanvas('lane', GW - JX, 22), c = t.getContext();

@@ -54,11 +54,14 @@ function newSave() {
   };
 }
 const Store = {
-  data: { settings: { speed: 3, offset: 0, vol: 8, gfx: 1 }, save: null },
+  data: { settings: { speed: 3, offset: 0, vol: 8, sfx: 8, gfx: 2, gfxV: 2, use3d: true, hd3d: true, shake: true, meter: true, keys: { air: ['KeyD', 'KeyF'], gnd: ['KeyJ', 'KeyK'] } }, save: null },
   load() {
     try {
       const s = JSON.parse(localStorage.getItem('beatrunner.rpg.v1'));
       if (s) { Object.assign(this.data.settings, s.settings || {}); this.data.save = s.save || null; }
+      const st = this.data.settings;
+      if (st.gfxV !== 2) { st.gfx = 2; st.gfxV = 2; }   // 새 해상도: 기본을 '선명하게(모니터 그대로)'로
+      if (!st.keys || !st.keys.air) st.keys = { air: ['KeyD', 'KeyF'], gnd: ['KeyJ', 'KeyK'] };
       if (this.data.save) { this.data.save.enh = this.data.save.enh || {}; this.data.save.stones = this.data.save.stones || 0; }   // 예전 기록도 강화를 쓸 수 있게
     } catch (e) { /* 저장소를 못 쓰면 기본값으로 */ }
   },
@@ -82,8 +85,24 @@ function onKeys(scene, down, up) {
   });
 }
 
+/* ---------- 키 ---------- */
+function laneKeys() { const k = Store.data.settings.keys; return [[...k.air, 'ArrowUp'], [...k.gnd, 'ArrowDown']]; }
+function keyName(code) {
+  if (!code) return '?';
+  const m = { Space: 'SPACE', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', BracketLeft: '[', BracketRight: ']', Minus: '-', Equal: '=', Backquote: '`', Backslash: '\\', ShiftLeft: 'L-SHIFT', ShiftRight: 'R-SHIFT', ControlLeft: 'L-CTRL', ControlRight: 'R-CTRL', AltLeft: 'L-ALT', AltRight: 'R-ALT' };
+  return m[code] || code.replace(/^Key/, '').replace(/^Digit/, '').replace(/^Numpad/, 'NUM');
+}
+
 /* ---------- 카메라: 480x270 세상을 RES 배로 확대해서 보여 줘요 ---------- */
-function fitCam(scene) { scene._leaving = false; scene.cameras.main.setOrigin(0, 0).setZoom(RES); }
+function applyShake(scene) {
+  const cam = scene.cameras.main;
+  if (!cam._shake0) cam._shake0 = cam.shake;
+  // 카메라를 RES 배로 확대해 쓰므로 흔들림 세기도 RES 로 나눠 줘요 (안 그러면 너무 세게 흔들려요)
+  cam.shake = Store.data.settings.shake
+    ? function (d, i, ...r) { return cam._shake0.call(this, d, typeof i === 'number' ? i / RES : i, ...r); }
+    : function () { return this; };   // 화면 흔들림 끄기
+}
+function fitCam(scene) { scene._leaving = false; scene.cameras.main.setOrigin(0, 0).setZoom(RES); applyShake(scene); }
 
 /* ---------- 장면 전환 (페이드) ---------- */
 function goScene(scene, key, data, ms = 350) {

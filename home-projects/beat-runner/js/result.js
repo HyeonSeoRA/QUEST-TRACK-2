@@ -11,22 +11,23 @@ class Result extends Phaser.Scene {
     const fc = !d.failed && c.M === 0, ap = fc && c.G === 0 && c.D === 0;
     const rank = d.failed ? 'F' : acc >= 0.95 ? 'S' : acc >= 0.88 ? 'A' : acc >= 0.78 ? 'B' : acc >= 0.65 ? 'C' : 'D';
     const hard = d.diff === 'hard';
-    const firstClear = !d.failed && !sv.cleared[st.id];
+    const prac = !!d.practice;   // 연습 모드: 기록·보상 없음
+    const firstClear = !prac && !d.failed && !sv.cleared[st.id];
 
     // 보상 계산
     const rankMul = { S: 1.3, A: 1.15, B: 1, C: 0.9, D: 0.8, F: 1 }[rank];
     const failMul = d.reason === 'escape' ? 0.5 : d.reason === 'dead' ? 0.3 : 1;
-    const expGain = Math.round(st.exp * rankMul * (hard ? 1.5 : 1) * failMul);
-    const goldGain = Math.round(d.gold * (hard ? 1.5 : 1) * (d.failed ? 0.5 : 1));
+    const expGain = prac ? 0 : Math.round(st.exp * rankMul * (hard ? 1.5 : 1) * failMul);
+    const goldGain = prac ? 0 : Math.round(d.gold * (hard ? 1.5 : 1) * (d.failed ? 0.5 : 1));
     const lvBefore = sv.lv, statBefore = stats(sv), expBefore = sv.exp;
-    const stoneGain = (d.stones || 0) + (d.failed ? 0 : 1 + st.ch + (st.boss ? 2 : 0) + (hard ? 1 : 0) + (rank === 'S' ? 1 : 0));
+    const stoneGain = prac ? 0 : (d.stones || 0) + (d.failed ? 0 : 1 + st.ch + (st.boss ? 2 : 0) + (hard ? 1 : 0) + (rank === 'S' ? 1 : 0));
     sv.exp += expGain; sv.gold += goldGain; sv.stones = (sv.stones || 0) + stoneGain;
     const ups = [];
     while (sv.lv < MAX_LV && sv.exp >= expNext(sv.lv)) { sv.exp -= expNext(sv.lv); sv.lv++; ups.push(sv.lv); }
     if (sv.lv >= MAX_LV) sv.exp = 0;
     let drop = null;
     if (firstClear && st.drop && !sv.inv.includes(st.drop)) { sv.inv.push(st.drop); drop = st.drop; }
-    if (!d.failed) {
+    if (!d.failed && !prac) {
       sv.cleared[st.id] = true;
       const key = st.id;
       const old = sv.best[key];
@@ -48,7 +49,7 @@ class Result extends Phaser.Scene {
     if (d.failed) this.hero.setTint(0x8a8aa8);
     this.t0 = 0;
 
-    const head = d.failed ? (d.reason === 'escape' ? '보스를 놓쳤다…' : '패배…') : (ap ? 'ALL PERFECT' : fc ? 'FULL COMBO' : 'STAGE CLEAR');
+    const head = d.failed ? (d.reason === 'escape' ? '보스를 놓쳤다…' : '패배…') : (prac ? 'PRACTICE' : ap ? 'ALL PERFECT' : fc ? 'FULL COMBO' : 'STAGE CLEAR');
     const ht = tx(this, GW / 2, 20, head, d.failed ? { size: 16, font: 'serif', bold: true, ox: 0.5, oy: 0.5, color: '#ff9a9a', st: 3 } : { font: 'en', size: 20, ox: 0.5, oy: 0.5, st: 4, stroke: '#2a1408' }).setDepth(110);
     if (!d.failed) goldFill(ht);
     tx(this, GW / 2, 36, `${st.id}  ${st.name}  ·  ${hard ? '어려움' : '보통'}`, { size: 9, ox: 0.5, color: '#c8c0e8' }).setDepth(110);
@@ -87,7 +88,25 @@ class Result extends Phaser.Scene {
     if (d.failed) tx(this, 304, y, d.reason === 'escape' ? '보스를 쓰러뜨리려면 공격력이 더 필요해요.\n레벨을 올리거나 좋은 무기를 사 보세요!' : '레벨을 올리거나 방어구를 사면\n더 오래 버틸 수 있어요.', { size: 8, color: '#ffb0b0', wrap: 160, ls: 4 }).setDepth(110);
     this.upsT = tx(this, 304, 200, '', { size: 8, color: '#9dffa0', wrap: 160 }).setDepth(110);
 
-    tx(this, GW / 2, GH - 12, 'Enter: 계속    R: 다시 도전', { size: 8, ox: 0.5, color: '#9a92c0' }).setDepth(110);
+    // 아래 선택지: 다음 스테이지 / 다시 도전 / 지도로  (←→ 고르고 Enter)
+    const nextOk = !this.after && !d.failed && d.stage + 1 < STAGES.length && nodeUnlocked(sv, d.stage + 2);
+    this.opts = [
+      ...(this.after ? [{ text: '이야기 계속', k: 'map' }] : []),
+      ...(nextOk ? [{ text: '다음 스테이지', k: 'next' }] : []),
+      { text: '다시 도전 (R)', k: 'retry' },
+      { text: '지도로', k: 'map' },
+    ];
+    this.optSel = 0;
+    this.optT = this.opts.map((o, i) => {
+      const t = tx(this, 0, GH - 13, o.text, { size: 9, oy: 0.5 }).setDepth(110).setInteractive({ useHandCursor: true });
+      t.on('pointerdown', () => { this.optSel = i; this.drawOpts(); this.choose(); });
+      return t;
+    });
+    const tw = this.optT.reduce((a, t) => a + t.width, 0) + (this.optT.length - 1) * 26;
+    let ox = GW / 2 - tw / 2;
+    this.optT.forEach(t => { t.x = Math.round(ox); ox += t.width + 26; });
+    this.optCur = this.add.image(0, GH - 13, 'cursor').setDepth(110);
+    this.drawOpts();
 
     // 연출 순서: 랭크 → 경험치 바 → 레벨 업
     this.target = d.score; this.shown = 0;
@@ -99,10 +118,12 @@ class Result extends Phaser.Scene {
     this.ready = false;
     this.time.delayedCall(900, () => { this.ready = true; });
     onKeys(this, e => {
-      if (OK_KEYS.includes(e.code) || e.code === 'Escape') this.go(false);
-      else if (e.code === 'KeyR') this.go(true);
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') { this.optSel = (this.optSel + this.opts.length - 1) % this.opts.length; AE.ui(); this.drawOpts(); }
+      else if (e.code === 'ArrowRight' || e.code === 'KeyD') { this.optSel = (this.optSel + 1) % this.opts.length; AE.ui(); this.drawOpts(); }
+      else if (OK_KEYS.includes(e.code)) this.choose();
+      else if (e.code === 'Escape') this.go('map');
+      else if (e.code === 'KeyR') this.go('retry');
     });
-    this.input.on('pointerdown', () => this.go(false));
     this.cameras.main.fadeIn(400);
   }
   animExp(lv, exp, ups, before) {
@@ -131,11 +152,23 @@ class Result extends Phaser.Scene {
     };
     next();
   }
-  go(retry) {
+  drawOpts() {
+    this.optT.forEach((t, i) => t.setColor(i === this.optSel ? '#ffe8b0' : '#8a82b0'));
+    const t = this.optT[this.optSel]; this.optCur.setPosition(t.x - 8, GH - 13);
+  }
+  choose() { this.go(this.opts[this.optSel].k); }
+  go(k) {
     if (!this.ready) return; this.ready = false;
     AE.ui('ok');
     const d = this.d;
-    if (retry) { goScene(this, 'Play', { stage: d.stage, diff: d.diff }); return; }
+    if (k === 'retry') { goScene(this, 'Play', { stage: d.stage, diff: d.diff, practice: d.practice }); return; }
+    if (k === 'next') {
+      const ns = d.stage + 1, play = ['Play', { stage: ns, diff: d.diff }];
+      Store.s.node = ns + 1; Store.save();
+      const sid = STORY_BEFORE[STAGES[ns].id];
+      if (sid && !Store.s.seen[sid]) goScene(this, 'Story', { id: sid, next: play }); else goScene(this, ...play);
+      return;
+    }
     if (this.after) goScene(this, 'Story', { id: this.after, next: ['WorldMap', {}] });
     else goScene(this, 'WorldMap', {});
   }

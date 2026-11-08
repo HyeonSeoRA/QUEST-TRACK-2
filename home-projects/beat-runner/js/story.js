@@ -11,7 +11,7 @@ class Story extends Phaser.Scene {
     const S = STORY[this.d.id];
     AE.init();
     playBgm(this.d.id.startsWith('boss') ? 'map' : 'title', 0.55);
-    this.bg = new BG(this, S.bg, { orbit: 22 });
+    this.bg = new BG(this, S.bg, { orbit: 22, shiftY: 40 });
     this.t0 = 0;
     this.add.image(170, GROUND + 3, 'shadow').setScale(1, 0.25).setAlpha(0.5).setDepth(19);
     this.hero = this.add.sprite(170, GROUND + 1, 'hero', 'idle0').setOrigin(0.5, 1).setDepth(20);

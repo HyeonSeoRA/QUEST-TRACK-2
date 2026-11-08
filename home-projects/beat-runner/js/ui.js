@@ -110,7 +110,7 @@ class Menu {
       if (it.right != null) this.objs.push(tx(this.s, this.x + this.w - 6, y + this.rowH / 2, it.right, { size: 10, ox: 1, oy: 0.5, color: it.rcolor || (it.disabled ? '#6a6688' : '#ffe8b0') }).setDepth(this.depth + 1));
       const z = this.s.add.zone(this.x, y, this.w, this.rowH).setOrigin(0).setInteractive({ useHandCursor: true }).setDepth(this.depth + 3);
       z.on('pointerover', () => { if (this.i !== k && this.active()) { this.i = k; AE.ui(); this.draw(); } });
-      z.on('pointerdown', () => { if (!this.active()) return; this.i = k; this.draw(); this.ok(); });
+      z.on('pointerdown', p => { if (!this.active()) return; this.i = k; this.draw(); if (this.o.onClick) this.o.onClick(it, k, p); else this.ok(); });
       this.objs.push(z);
     });
     this.draw();

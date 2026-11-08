@@ -40,12 +40,14 @@ const AE = {
     const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = nb.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     this.noise = nb;
-    this.setVolume(Store.data.settings.vol);
+    this.master.gain.value = 0.95;
+    this.setVolume(Store.data.settings.vol); this.setSfx(Store.data.settings.sfx);
   },
   resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
   now() { return this.ctx ? this.ctx.currentTime : performance.now() / 1000; },
   latency() { const c = this.ctx; return c ? Math.min(0.15, (c.outputLatency || 0) + (c.baseLatency || 0)) : 0; },
-  setVolume(v) { if (this.master) this.master.gain.value = Math.pow(v / 10, 1.5) * 0.95; },
+  setVolume(v) { if (this.music) this.music.gain.value = Math.pow(v / 10, 1.5); },     // 음악 크기
+  setSfx(v) { if (this.sfx) this.sfx.gain.value = Math.pow(v / 10, 1.3) * 0.75; },     // 효과음 크기
   setBeat(spb) { if (this.ctx) this.dly.delayTime.setValueAtTime(spb * 0.75, this.ctx.currentTime); },
   spectrum() { if (!this.analyser) return null; this.analyser.getByteFrequencyData(this.freq); return this.freq; },
 

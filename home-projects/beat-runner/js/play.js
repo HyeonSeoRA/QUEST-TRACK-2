@@ -10,7 +10,7 @@ const BOSS_INFO = {
 
 class Play extends Phaser.Scene {
   constructor() { super('Play'); }
-  init(d) { this.si = d.stage; this.diff = d.diff || 'normal'; this.auto = !!d.auto; this.seek = d.seek || 0; }
+  init(d) { this.si = d.stage; this.diff = d.diff || 'normal'; this.auto = !!d.auto; this.seek = d.seek || 0; this.practice = !!d.practice; }
 
   create() {
     fitCam(this);
@@ -62,7 +62,10 @@ class Play extends Phaser.Scene {
     this.slashFlip = false; this.ghostAcc = 0; this.realT = 0;
 
     this.makeEmitters();
+    this.lk = laneKeys();
+    this.pstack = { stack: [], push(h) { this.stack.push(h); return h; }, pop(h) { const i = this.stack.lastIndexOf(h); if (i >= 0) this.stack.splice(i, 1); }, top() { return this.stack[this.stack.length - 1]; } };
     this.makeHUD();
+    this.makeMeter();
 
     // 보스
     this.boss = null;
@@ -136,7 +139,7 @@ class Play extends Phaser.Scene {
 
     // 곡 이름 줄: [이름] [난이도] 를 한 줄에 나란히, 진행 막대는 그 아래 따로
     const tt = tx(this, 0, 7, `${this.st.id}  ${this.st.name}`, { size: 9, font: 'serif', bold: true, color: '#fff4dc', st: 3 }).setDepth(d);
-    const dt = tx(this, 0, 9, this.diff === 'hard' ? '어려움' : '보통', { size: 7, color: this.diff === 'hard' ? '#ff9a9a' : '#9dffa0' }).setDepth(d);
+    const dt = tx(this, 0, 9, (this.diff === 'hard' ? '어려움' : '보통') + (this.practice ? ' · 연습' : ''), { size: 7, color: this.diff === 'hard' ? '#ff9a9a' : '#9dffa0' }).setDepth(d);
     const tw = tt.width + 6 + dt.width;
     tt.x = Math.round(GW / 2 - tw / 2); dt.x = Math.round(tt.x + tt.width + 6);
     this.progG = Gauge(this, GW / 2 - 70, 26, 140, 2, 0x9ad8ff, 0xffffff, { depth: d });
@@ -153,8 +156,8 @@ class Play extends Phaser.Scene {
     }
     this.dmg = this.add.rectangle(0, 0, GW, GH, 0xff0000, 0).setOrigin(0).setDepth(95);
     this.keyHints = [
-      tx(this, JX + 16, LANE_Y[0], 'D · F', { size: 9, bold: true, oy: 0.5, color: '#bfeeff', st: 3 }).setDepth(50),
-      tx(this, JX + 16, LANE_Y[1], 'J · K', { size: 9, bold: true, oy: 0.5, color: '#ffe0a8', st: 3 }).setDepth(50),
+      tx(this, JX + 16, LANE_Y[0], `${keyName(Store.data.settings.keys.air[0])} · ${keyName(Store.data.settings.keys.air[1])}`, { size: 9, bold: true, oy: 0.5, color: '#bfeeff', st: 3 }).setDepth(50),
+      tx(this, JX + 16, LANE_Y[1], `${keyName(Store.data.settings.keys.gnd[0])} · ${keyName(Store.data.settings.keys.gnd[1])}`, { size: 9, bold: true, oy: 0.5, color: '#ffe0a8', st: 3 }).setDepth(50),
     ];
     this.updateHP(true);
   }
@@ -175,11 +178,11 @@ class Play extends Phaser.Scene {
   /* ================= 입력 ================= */
   keyDown(e) {
     if (e.repeat) return;
-    if (this.state === 'pause') { this.pauseMenu.key(e.code); return; }
+    if (this.state === 'pause') { const top = this.pstack.top(); if (top) top.key(e.code); return; }
     if (e.code === 'Escape') { if (this.state === 'play') this.pause(); return; }
     if (this.state !== 'play') return;
     if (e.code === 'Space') { this.tryFever(); return; }
-    for (let l = 0; l < 2; l++) if (LANE_KEYS[l].includes(e.code)) { this.laneHeld[l].add(e.code); this.press(l); return; }
+    for (let l = 0; l < 2; l++) if (this.lk[l].includes(e.code)) { this.laneHeld[l].add(e.code); this.press(l); return; }
   }
   keyUp(e) {
     for (let l = 0; l < 2; l++) if (this.laneHeld[l].delete(e.code) && this.laneHeld[l].size === 0) this.release(l);
@@ -257,6 +260,7 @@ class Play extends Phaser.Scene {
     AE.fever();
     this.cameras.main.flash(250, 255, 230, 160);
     this.banner('BURST!', 112, 900);
+    if (typeof W3 !== 'undefined') W3.flash(PX, GROUND - 30, 0xffd070, 6);
     this.burst('y', PX, this.py - 20, 40);
   }
 
@@ -274,6 +278,7 @@ class Play extends Phaser.Scene {
       if (was < 100 && this.fever >= 100) { AE.combo(); this.popText('BURST READY!  [SPACE]', '#ffe08a', GW / 2, 104, 10, false, 'center'); }
     }
     this.popJudge(g, l, d);
+    this.meterTick(d, J.c);
     if (this.combo >= 3) {
       this.comboN.setText(String(this.combo)).setScale(1.25);
       goldFill(this.comboN);
@@ -300,7 +305,7 @@ class Play extends Phaser.Scene {
     this.comboN.setText(''); this.comboL.setVisible(false);
     const def = this.ps.def;
     const dmg = Math.max(2, Math.round(this.enemyAtk * mul * (1 - def / (def + 20))));
-    this.hp = Math.max(0, this.hp - dmg);
+    this.hp = Math.max(this.practice ? 1 : 0, this.hp - dmg);   // 연습 모드는 지지 않아요
     this.updateHP();
     this.popJudge('M', l, 0);
     this.popText('-' + dmg, '#ff7a7a', PX + 6, this.py - 70, 11, false, 'hp');
@@ -334,6 +339,8 @@ class Play extends Phaser.Scene {
   }
   hitFx(l, g, n) {
     const y = LANE_Y[l], c = LANE_C[l];
+    // 3D 세계도 그 자리에서 번쩍 빛나요
+    if (typeof W3 !== 'undefined') W3.flash(JX + 10, y, g === 'P' ? 0xffe08a : c, g === 'P' ? 3 : 2.2);
     // 바닥에 비치는 빛 (칠 때마다 발밑이 환해져요)
     const fl = this.add.image(JX, GROUND, 'glow').setTint(c).setBlendMode('ADD').setScale(1.6, 0.35).setAlpha(0.55).setDepth(8);
     this.tweens.add({ targets: fl, alpha: 0, scaleX: 2.2, duration: 260, onComplete: () => fl.destroy() });
@@ -350,7 +357,7 @@ class Play extends Phaser.Scene {
       let gold = Math.max(1, Math.round(this.st.gold * this.ps.gold * (0.6 + Math.random() * 0.8)));
       if (n.elite) {
         gold *= 3; this.coinEm.explode(6, spr.x, spr.y); this.burst('y', spr.x, spr.y, 16); AE.coin();
-        if (Math.random() < 0.35) { this.stoneGain++; this.popText('마정석 +1', '#a8e0ff', spr.x, spr.y - 26, 9, true, 'stone'); }
+        if (Math.random() < 0.35) { this.stoneGain++; this.popText('마정석 +1', '#a8e0ff', JX + 96, 100, 9, true, 'stone'); }
       }
       this.goldGain += gold;
       this.coinEm.explode(2, spr.x, spr.y);
@@ -427,6 +434,7 @@ class Play extends Phaser.Scene {
     this.time.delayedCall(950, () => {
       AE.explode();
       this.cameras.main.flash(400, 255, 255, 255);
+      if (typeof W3 !== 'undefined') W3.flash(b.spr.x, b.oy === 1 ? b.spr.y - 64 : b.spr.y, 0xffa060, 9);
       const cy = b.oy === 1 ? b.spr.y - 64 : b.spr.y;
       this.burst('boss', b.spr.x, cy, 70); this.burst('y', b.spr.x, cy, 40);
       this.coinEm.explode(20, b.spr.x, cy);
@@ -443,20 +451,52 @@ class Play extends Phaser.Scene {
     this.state = 'pause';
     if (AE.ctx) AE.ctx.suspend();
     this.pauseDim = this.add.rectangle(0, 0, GW, GH, 0x05020c, 0.6).setOrigin(0).setDepth(290);
-    this.pauseWin = Win(this, GW / 2 - 80, 92, 160, 80, { depth: 300, title: '일시정지', pop: false });
-    this.pauseMenu = new Menu(this, GW / 2 - 70, 106, 140, [{ text: '계속하기' }, { text: '처음부터 다시' }, { text: '지도로 돌아가기' }], {
-      depth: 300, rowH: 18,
-      onOk: (it, i) => {
+    this.pauseWin = Win(this, GW / 2 - 80, 86, 160, 96, { depth: 300, title: '일시정지', pop: false });
+    this.pauseMenu = new Menu(this, GW / 2 - 70, 100, 140, [{ text: '계속하기', k: 'go' }, { text: '처음부터 다시', k: 'retry' }, { text: '설정', k: 'set' }, { text: '지도로 돌아가기', k: 'map' }], {
+      depth: 300, rowH: 18, stack: this.pstack,
+      onOk: it => {
+        if (it.k === 'set') { AE.ui('open'); openSettings(this, this.pstack, () => this.applySettings(), { inGame: true, depth: 330 }); return; }
         AE.resume();
-        if (i === 0) { this.resumeGame(); return; }
+        if (it.k === 'go') { this.resumeGame(); return; }
         SEQ.stop(); this.state = 'leave';
-        if (i === 1) this.scene.restart({ stage: this.si, diff: this.diff, auto: this.auto });
+        if (it.k === 'retry') this.scene.restart({ stage: this.si, diff: this.diff, auto: this.auto, practice: this.practice });
         else this.scene.start('WorldMap', {});
       },
       onBack: () => { AE.resume(); this.resumeGame(); },
     });
   }
+  // 일시정지 중 바꾼 설정을 바로 적용
+  applySettings() {
+    const st = Store.data.settings;
+    this.speed = 100 * st.speed; this.offset = st.offset / 1000; this.lk = laneKeys();
+    this.meter.setVisible(st.meter);
+    for (const n of this.active) if (n.spr && !n.hit) n.spr.x = JX + (n.t - this.clock) * this.speed;
+  }
+  /* 타이밍 막대: 가운데 = 딱 맞음, 왼쪽 = 일찍, 오른쪽 = 늦게. 최근에 친 타이밍이 짧은 선으로 남아요 */
+  makeMeter() {
+    const c = this.add.container(GW / 2, GH - 40).setDepth(99).setVisible(Store.data.settings.meter);
+    const g = this.add.graphics();
+    const W = 60 / JUDGE.D.w;
+    g.fillStyle(0x000000, 0.45).fillRoundedRect(-66, -6, 132, 12, 3);
+    g.fillStyle(JUDGE.D.c, 0.45).fillRect(-60, -1, 120, 2);
+    g.fillStyle(JUDGE.G.c, 0.6).fillRect(-JUDGE.G.w * W, -1, JUDGE.G.w * W * 2, 2);
+    g.fillStyle(JUDGE.P.c, 0.85).fillRect(-JUDGE.P.w * W, -1, JUDGE.P.w * W * 2, 2);
+    g.fillStyle(0xffffff, 1).fillRect(-0.5, -5, 1, 10);
+    c.add(g);
+    c.add(tx(this, -64, -13, 'FAST', { font: 'en', size: 6, color: '#8ab8ff' }));
+    c.add(tx(this, 64, -13, 'SLOW', { font: 'en', size: 6, ox: 1, color: '#ffaa6a' }));
+    this.meter = c; this.meterW = W; this.ticks = [];
+  }
+  meterTick(d, col) {
+    if (!Store.data.settings.meter) return;
+    const x = clamp(d, -JUDGE.D.w, JUDGE.D.w) * this.meterW;
+    const t = this.add.rectangle(x, 0, 2, 9, col).setAlpha(0.95);
+    this.meter.add(t);
+    this.tweens.add({ targets: t, alpha: 0, duration: 2400, onComplete: () => t.destroy() });
+    this.ticks.push(t); if (this.ticks.length > 14) { const o = this.ticks.shift(); if (o.active) o.destroy(); }
+  }
   resumeGame() {
+    if (this.pstack.stack.length > 1) return;   // 설정 창이 열려 있으면 닫힌 뒤에
     this.pauseMenu.destroy(); this.pauseWin.destroy(); this.pauseDim.destroy();
     for (let l = 0; l < 2; l++) { this.laneHeld[l].clear(); if (this.holdNote[l]) this.release(l); }
     this.ptrLane = {};
@@ -498,7 +538,7 @@ class Play extends Phaser.Scene {
     this.cameras.main.once('camerafadeoutcomplete', () => {
       SEQ.stop();
       this.scene.start('Result', {
-        stage: this.si, diff: this.diff, score: this.score, cnt: this.cnt, total: this.total,
+        practice: this.practice, stage: this.si, diff: this.diff, score: this.score, cnt: this.cnt, total: this.total,
         maxCombo: this.maxCombo, failed, reason, gold: this.goldGain, kills: this.kills, stones: this.stoneGain,
       });
     });

@@ -388,7 +388,7 @@ function ensureVignette(scene) {
   t.refresh();
 }
 
-class BG {
+class BG2D {
   constructor(scene, id, o = {}) {
     ensureTheme(scene, id); ensureVignette(scene);
     const th = this.th = THEMES[id], s = this.s = scene, k = 'bg_' + id + '_';
@@ -478,6 +478,41 @@ class BG {
     }
     for (const r of this.rays) r.ray.setAlpha(0.05 + 0.04 * Math.sin(this.t * 0.7 + r.ph) + pulse * 0.03);
     if (this.moonGlow) this.moonGlow.setAlpha(0.3 + 0.05 * Math.sin(this.t));
+    this.burstFx.setAlpha(burst ? 0.05 + pulse * 0.06 : 0);
+    if (burst) this.burstFx.fillColor = hueC(this.t * 0.4, 0.4);
+  }
+  destroy() { this.objs.forEach(o => o.destroy()); }
+}
+
+/* 배경 고르기: 3D 를 쓸 수 있으면 도트 3D 세계, 아니면 2.5D 그림 배경 */
+class BG {
+  constructor(scene, id, o = {}) {
+    if (!W3.init()) return new BG2D(scene, id, o);
+    ensureVignette(scene);
+    const th = this.th = THEMES[id], s = this.s = scene;
+    this.layers = []; this.objs = []; this.t = 0;
+    const add = x => { this.objs.push(x); return x; };
+    W3.show(id, o);
+    const base = -100;
+    // 빛줄기와 떠다니는 입자는 3D 위에 겹쳐 그려요
+    this.rays = [];
+    if (th.rays) for (let i = 0; i < 4; i++) {
+      const ray = add(s.add.image(220 + i * 70, -30, 'ray').setOrigin(0.5, 0).setScale(1.4 + i * 0.3, 1.3).setRotation(0.42).setTint(th.rays).setBlendMode('ADD').setAlpha(0.06).setDepth(base + 30));
+      this.rays.push({ ray, ph: i * 1.7 });
+    }
+    const cfg = {
+      pollen: { tint: [0xfff2b0, 0xffffff], speedX: { min: -30, max: -10 }, speedY: { min: -6, max: 6 }, scale: { start: 0.7, end: 0.2 }, alpha: { start: 0.9, end: 0 } },
+      sparkle: { tint: [0x8fe8ff, 0xd8a0ff], speedX: { min: -14, max: -4 }, speedY: { min: -14, max: -4 }, scale: { start: 0.8, end: 0 }, alpha: { start: 1, end: 0 } },
+      petal: { tint: [0xb8a0ff, 0xff9ad0], speedX: { min: -40, max: -15 }, speedY: { min: 8, max: 22 }, scale: { start: 0.8, end: 0.4 }, alpha: { start: 0.9, end: 0 }, rotate: { min: 0, max: 360 } },
+    }[th.amb];
+    add(s.add.particles(0, 0, th.amb === 'petal' ? 'leaf' : 'px', Object.assign({ x: { min: 0, max: GW + 60 }, y: { min: 0, max: 220 }, lifespan: { min: 3000, max: 6000 }, frequency: 220, quantity: 1, blendMode: 'ADD' }, cfg)).setDepth(base + 31));
+    this.burstFx = add(s.add.rectangle(0, 0, GW, GH, 0xffd070, 0).setOrigin(0).setDepth(base + 29).setBlendMode('ADD'));
+    add(s.add.image(0, 0, 'vignette').setOrigin(0).setDepth(96).setScrollFactor(0));
+  }
+  update(dt, speed, pulse = 0, burst = false) {
+    this.t += dt;
+    W3.advance(dt, speed, pulse);
+    for (const r of this.rays) r.ray.setAlpha(0.04 + 0.03 * Math.sin(this.t * 0.7 + r.ph) + pulse * 0.03);
     this.burstFx.setAlpha(burst ? 0.05 + pulse * 0.06 : 0);
     if (burst) this.burstFx.fillColor = hueC(this.t * 0.4, 0.4);
   }

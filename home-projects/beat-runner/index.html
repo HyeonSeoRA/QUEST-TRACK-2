@@ -11,18 +11,25 @@
 <style>
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
   body { display: flex; align-items: center; justify-content: center; }
+  #game { width: 100vw; height: 100vh; }
+  /* 3D 세계 화면: 작은 화면(480x270)을 도트 그대로 키워서, Phaser 화면 바로 뒤에 겹쳐요 */
+  #world3d { position: fixed; display: none; z-index: 0; image-rendering: pixelated; }
+  #game > canvas:not(#world3d) { position: relative; z-index: 1; }
   #game canvas { display: block; image-rendering: pixelated; touch-action: none; }
 </style>
 </head>
 <body>
-<div id="game"></div>
+<div id="game"><canvas id="world3d"></canvas></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+<!-- 3D 배경: Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/util.js"></script>
 <script src="js/font.js"></script>
 <script src="js/pixel.js"></script>
 <script src="js/data.js"></script>
 <script src="js/art.js"></script>
 <script src="js/bg.js"></script>
+<script src="js/world3d.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/songs.js"></script>
 <script src="js/ui.js"></script>
