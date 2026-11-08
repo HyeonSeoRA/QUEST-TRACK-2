@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>제7교시</title>
+<meta name="description" content="수업 시간에 잠들었다 깨어나니, 학교는 20년 전에 문을 닫은 폐교였다. 3D 공포 롤플레잉 게임.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;800&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --red: #a3101a; --red2: #e0303a; --ink: #d9d2c8; --dim: #8a827a; --line: #2c1a1a; --bg: #060506; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #000; color: var(--ink); overflow: hidden; font-family: 'Noto Sans KR', sans-serif; user-select: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  kbd { display: inline-block; border: 1px solid #5a4a46; border-bottom-width: 2px; padding: 0 5px; border-radius: 3px; font-size: 11px; color: #eee; font-family: inherit; line-height: 1.5; background: rgba(0,0,0,.4); }
+  #stage { position: fixed; inset: 0; z-index: 0; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+  .screen { position: fixed; inset: 0; display: none; z-index: 5; }
+  .screen.show { display: flex; }
+  .center { align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 16px; }
+  .serif { font-family: 'Nanum Myeongjo', serif; }
+  #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 60; }
+
+  /* ---------- 동의 / 로그인 ---------- */
+  .gate { background: radial-gradient(ellipse at 50% 40%, #140708 0%, #000 70%); overflow-y: auto; }
+  .card { width: 100%; max-width: 520px; background: rgba(10,7,7,.94); border: 1px solid var(--line); padding: 30px 28px 26px; text-align: left; box-shadow: 0 0 80px rgba(120,0,0,.15); margin: auto; }
+  .card h1 { font-family: 'Nanum Myeongjo', serif; font-weight: 800; color: var(--red); letter-spacing: .3em; margin: 0 0 4px; font-size: 30px; text-align: center; }
+  .card .lead { color: var(--dim); font-size: 13px; text-align: center; margin: 0 0 20px; line-height: 1.7; }
+  .cItem { border-bottom: 1px solid #1d1414; padding: 10px 2px; }
+  .cItem label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; }
+  .cItem input { width: 18px; height: 18px; accent-color: var(--red); flex: none; }
+  .cItem .tag { font-size: 11px; padding: 1px 6px; border-radius: 2px; flex: none; }
+  .tag.req { background: #3a0a0e; color: #ff8a8a; } .tag.opt { background: #1e1e22; color: #a0a0b0; }
+  .cItem .cMore { margin-left: auto; color: #6a625c; font-size: 12px; text-decoration: underline; }
+  .cItem .cBody { display: none; margin: 8px 0 2px 28px; font-size: 12.5px; color: #9a918a; line-height: 1.75; max-height: 180px; overflow-y: auto; padding-right: 6px; }
+  .cItem.open .cBody { display: block; }
+  .cAll { border: 1px solid #3a1a1a; background: #120909; padding: 12px; margin-bottom: 6px; }
+  .cAll label { font-weight: 700; }
+  .big { display: block; width: 100%; margin-top: 18px; padding: 14px; border: 1px solid #7a0c14; color: #f0e0dc; letter-spacing: .3em; font-family: 'Nanum Myeongjo', serif; font-size: 17px; transition: background .25s, box-shadow .25s; }
+  .big:hover:not(:disabled) { background: #3a0408; box-shadow: 0 0 30px #7a0010; }
+  .big:disabled { opacity: .35; cursor: not-allowed; }
+  .warnBox { border-left: 3px solid var(--red); padding: 8px 12px; background: #0e0707; font-size: 12.5px; color: #b8aaa2; line-height: 1.7; margin-bottom: 12px; }
+  #login .card { text-align: center; }
+  #gbtn { display: flex; justify-content: center; min-height: 44px; margin: 18px 0 6px; }
+  .gFake { display: inline-flex; align-items: center; gap: 10px; padding: 10px 22px; border-radius: 22px; background: #202124; color: #e8eaed; font-size: 14px; opacity: .6; cursor: not-allowed; }
+  .gG { font-weight: 700; color: #4285f4; background: #fff; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; }
+  #gnote { font-size: 12px; color: #a07068; min-height: 18px; line-height: 1.6; }
+  .or { display: flex; align-items: center; gap: 10px; color: #4a4240; font-size: 12px; margin: 18px 0 12px; }
+  .or::before, .or::after { content: ''; flex: 1; height: 1px; background: #241818; }
+  .guestRow { display: flex; gap: 8px; }
+  #guestName { flex: 1; background: #0b0808; border: 1px solid #3a1a1a; color: var(--ink); padding: 11px 12px; font: inherit; outline: none; min-width: 0; }
+  #guestName:focus { border-color: var(--red); }
+  #guestBtn { border: 1px solid #5a2a2a; padding: 0 18px; color: #e8d8d0; flex: none; }
+  #guestBtn:hover { background: #2a0608; }
+  .fine { font-size: 11.5px; color: #5e5652; margin-top: 16px; line-height: 1.7; }
+
+  /* ---------- 불러오기 ---------- */
+  #loading { background: #000; }
+  #loading .serif { letter-spacing: .4em; color: #8a8078; font-size: 15px; animation: breathe 2s infinite; }
+  .bar { width: 260px; height: 2px; background: #1a1010; margin-top: 18px; }
+  #loadBar { height: 100%; width: 0; background: var(--red); transition: width .3s; }
+  @keyframes breathe { 50% { opacity: .35; } }
+
+  /* ---------- 메뉴 ---------- */
+  #menu { background: linear-gradient(90deg, rgba(0,0,0,.92) 0%, rgba(0,0,0,.65) 38%, rgba(0,0,0,0) 70%); flex-direction: column; justify-content: center; padding: 0 8vw; }
+  .title h1 { margin: 0; font-family: 'Nanum Myeongjo', serif; font-weight: 800; font-size: clamp(56px, 10vw, 128px); color: #d8d0c4; letter-spacing: .08em; line-height: 1;
+    text-shadow: 0 0 30px rgba(0,0,0,.9); }
+  .title h1 b { color: var(--red); font-weight: 800; animation: flick 7s infinite; display: inline-block; }
+  .title .en { font-family: 'Nanum Myeongjo', serif; color: #6a625c; letter-spacing: .6em; font-size: clamp(11px, 1.4vw, 15px); margin-top: 10px; }
+  .title .tag2 { font-family: 'Nanum Pen Script', cursive; color: #9a2a2a; font-size: clamp(22px, 2.6vw, 30px); margin-top: 14px; transform: rotate(-2deg); display: inline-block; }
+  @keyframes flick { 0%, 92%, 100% { opacity: 1; } 93% { opacity: .2; } 94% { opacity: 1; } 96% { opacity: .4; } }
+  #menu nav { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-top: 7vh; }
+  #menu nav button { font-family: 'Nanum Myeongjo', serif; font-size: 22px; letter-spacing: .25em; padding: 9px 0; color: #b0a89e; text-align: left; transition: color .2s, letter-spacing .3s, padding .3s; }
+  #menu nav button small { display: block; font-family: 'Noto Sans KR'; font-size: 12px; letter-spacing: 0; color: #6a605a; margin-top: 2px; }
+  #menu nav button:hover { color: #ff3a3a; letter-spacing: .32em; padding-left: 8px; }
+  #menuEnds { color: #6a3a36; font-size: 13px; margin-top: 18px; letter-spacing: .1em; }
+  #profile { position: fixed; top: 16px; right: 18px; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,.6); border: 1px solid #241818; padding: 7px 10px 7px 7px; border-radius: 28px; z-index: 6; }
+  #profile img, .ava0 { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+  .ava0 { display: inline-flex; align-items: center; justify-content: center; background: #3a0a10; color: #f0d0d0; font-weight: 700; }
+  #profile b { display: block; font-size: 14px; } #profile small { color: #7a706a; font-size: 11px; }
+  #logoutBtn { font-size: 11px; color: #8a6a66; border: 1px solid #3a2222; padding: 3px 9px; border-radius: 12px; margin-left: 6px; }
+  #logoutBtn:hover { color: #ff6a6a; }
+  .menuFoot { position: fixed; left: 8vw; bottom: 18px; font-size: 11.5px; color: #4a4240; }
+
+  /* ---------- 패널 (설정, 조작법, 엔딩 기록, 일시정지) ---------- */
+  .panel { position: fixed; inset: 0; display: none; z-index: 30; background: rgba(0,0,0,.78); align-items: center; justify-content: center; padding: 16px; }
+  .panel.show { display: flex; }
+  .panel .box { width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; background: rgba(9,6,6,.96); border: 1px solid var(--line); padding: 26px 28px; }
+  .panel h2 { font-family: 'Nanum Myeongjo', serif; color: var(--red); letter-spacing: .3em; text-align: center; margin: 0 0 18px; font-weight: 800; }
+  .panel h3 { font-size: 14px; color: #e0d6cc; margin: 18px 0 6px; }
+  .panel p, .panel li { font-size: 13.5px; color: #a8a098; line-height: 1.75; margin: 3px 0; }
+  .panel ul { padding-left: 18px; margin: 4px 0; }
+  .back { display: block; margin: 22px auto 0; font-family: 'Nanum Myeongjo', serif; letter-spacing: .25em; color: #8a8078; padding: 6px 20px; }
+  .back:hover { color: #ff3a3a; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid #1a1212; font-size: 14px; }
+  .row input[type=range] { width: 52%; accent-color: var(--red); }
+  .row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); }
+  .row select { background: #0c0808; color: var(--ink); border: 1px solid #3a1a1a; padding: 5px 8px; font: inherit; }
+  #qualNote { font-size: 12px; color: #a07068; min-height: 16px; }
+  #pause .box { max-width: 380px; text-align: center; }
+  #pause button.m { display: block; width: 100%; margin: 6px 0; font-family: 'Nanum Myeongjo', serif; font-size: 18px; letter-spacing: .2em; color: #b0a89e; padding: 10px; }
+  #pause button.m:hover { color: #ff3a3a; background: #140707; }
+  #recList { list-style: none; padding: 0; }
+  #recList li { display: grid; grid-template-columns: 70px 1fr; gap: 2px 10px; padding: 12px; border: 1px solid #1e1414; margin-bottom: 8px; opacity: .55; }
+  #recList li.on { opacity: 1; border-color: #4a1a1a; }
+  #recList span { grid-row: span 2; color: var(--red); font-family: 'Nanum Myeongjo'; font-size: 13px; align-self: center; }
+  #recList b { font-family: 'Nanum Myeongjo'; font-size: 18px; color: #e0d6cc; } #recList small { color: #7a706a; }
+
+  /* ---------- 인트로 ---------- */
+  #introScreen { background: #000; cursor: pointer; }
+  #introText { max-width: 620px; }
+  #introText p { font-family: 'Nanum Myeongjo', serif; font-size: clamp(17px, 2.2vw, 22px); color: #b8b0a6; letter-spacing: .08em; line-height: 2; margin: 0; animation: rise 1.8s ease-out both; }
+  #introText p:nth-child(5) { color: #c8c0b4; letter-spacing: .5em; margin: 18px 0; }
+  .skip { position: fixed; bottom: 18px; right: 22px; font-size: 12px; color: #4a4240; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+
+  /* ---------- 게임 화면 (HUD) ---------- */
+  #game { z-index: 2; pointer-events: none; }
+  #hud { position: absolute; inset: 0; pointer-events: none; text-shadow: 0 1px 3px #000, 0 0 8px #000; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; background: rgba(230,225,215,.55); border-radius: 50%; }
+  #prompt { position: absolute; left: 50%; top: calc(50% + 26px); transform: translateX(-50%); font-size: 14px; color: #e8e0d4; opacity: 0; transition: opacity .15s; white-space: nowrap; }
+  #prompt.show { opacity: 1; }
+  #quest { position: absolute; left: 22px; top: 18px; max-width: 360px; font-size: 14px; color: #ddd4c8; line-height: 1.5; }
+  #quest small { display: block; font-size: 11px; color: #a02a2a; letter-spacing: .3em; margin-bottom: 2px; }
+  #quest.flash { animation: qflash 1.6s; }
+  @keyframes qflash { 0% { color: #ff5050; transform: translateX(-6px); opacity: 0; } 30% { opacity: 1; transform: none; } 100% { color: #ddd4c8; } }
+  #phoneHud { position: absolute; right: 20px; top: 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #c8c4d0; background: rgba(5,6,10,.55); border: 1px solid #22242c; border-radius: 14px; padding: 6px 12px; transition: opacity .4s; }
+  #phoneHud.off { opacity: 0; }
+  #phoneHud .tm { font-weight: 700; letter-spacing: .05em; }
+  #phoneHud .sv { color: #7a7682; font-size: 11px; }
+  .batt { width: 30px; height: 12px; border: 1px solid #9a96a4; border-radius: 2px; padding: 1px; position: relative; }
+  .batt::after { content: ''; position: absolute; right: -4px; top: 3px; width: 2px; height: 4px; background: #9a96a4; }
+  #batFill { height: 100%; background: #c8d0c0; } #batFill.low { background: #e03030; animation: breathe .8s infinite; }
+  #lightIco { width: 10px; height: 10px; border-radius: 50%; background: #333; box-shadow: none; }
+  #lightIco.on { background: #fff2c0; box-shadow: 0 0 8px #ffe8a0; }
+  #bars { position: absolute; left: 22px; bottom: 22px; width: 260px; }
+  .bl { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #a89e94; margin-top: 5px; }
+  .bl i { font-style: normal; width: 34px; letter-spacing: .1em; }
+  .bl .tr { flex: 1; height: 7px; background: rgba(20,14,14,.8); border: 1px solid rgba(80,60,60,.5); position: relative; overflow: hidden; }
+  .bl .tr div { height: 100%; transition: width .15s; }
+  .bl span { width: 28px; text-align: right; font-size: 11px; color: #d0c6bc; }
+  #hpBar { background: linear-gradient(90deg, #6a0808, #c0202a); }
+  #sanBar { background: linear-gradient(90deg, #3a1a5a, #8a5ac8); }
+  .bl.sta .tr { height: 3px; } #staBar { background: #d8d0c4; }
+  #lvRow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  #lvTxt { font-family: 'Nanum Myeongjo'; font-weight: 800; color: #e0c890; font-size: 15px; }
+  #lvRow .tr { flex: 1; height: 2px; background: rgba(60,50,30,.6); } #expBar { height: 100%; background: #c8a850; }
+  #hotbar { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; gap: 6px; }
+  .hb { width: 54px; height: 54px; border: 1px solid rgba(90,70,60,.6); background: rgba(8,6,6,.6); position: relative; display: flex; align-items: center; justify-content: center; font-size: 22px; transition: opacity .2s; }
+  .hb.empty { opacity: .3; }
+  .hb kbd { position: absolute; left: 3px; top: 3px; font-size: 9px; padding: 0 3px; }
+  .hb b { position: absolute; right: 4px; bottom: 2px; font-size: 12px; color: #eee; }
+  #weaponHud { position: absolute; right: 22px; bottom: 22px; text-align: right; font-family: 'Nanum Myeongjo', serif; }
+  #weaponHud b { display: block; font-size: 18px; color: #e0d6cc; letter-spacing: .1em; }
+  #weaponHud small span { display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; font-size: 11px; border: 1px solid #4a3a36; margin-left: 4px; color: #8a807a; font-family: 'Noto Sans KR'; }
+  #weaponHud small span.on { color: #fff; border-color: var(--red); background: rgba(120,0,10,.5); }
+  #toasts { position: absolute; left: 22px; top: 30%; display: flex; flex-direction: column; gap: 6px; }
+  .toast { font-size: 13px; color: #ddd4c8; background: linear-gradient(90deg, rgba(10,6,6,.85), rgba(10,6,6,0)); padding: 6px 30px 6px 10px; border-left: 2px solid #6a4a3a; animation: tin .35s ease-out; transition: opacity .7s, transform .7s; max-width: 380px; }
+  .toast.get { border-left-color: #c8a850; } .toast.kill { border-left-color: var(--red); }
+  .toast.out { opacity: 0; transform: translateX(-12px); }
+  @keyframes tin { from { opacity: 0; transform: translateX(-14px); } }
+  #subtitle { position: absolute; left: 50%; bottom: 112px; transform: translateX(-50%); max-width: min(760px, 90vw); text-align: center; font-size: 17px; color: #e8e0d4; opacity: 0; transition: opacity .4s; font-family: 'Nanum Myeongjo', serif; letter-spacing: .03em; line-height: 1.6; }
+  #subtitle.show { opacity: 1; }
+  #subtitle b { color: #c84a4a; margin-right: 6px; }
+  #bigText { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font-family: 'Nanum Myeongjo', serif; font-weight: 800; font-size: clamp(34px, 6vw, 72px); color: #e8e0d4; opacity: 0; letter-spacing: .2em; pointer-events: none; }
+  #bigText.show { animation: bigIn 2.4s forwards; }
+  #bigText.red { color: #d01a24; text-shadow: 0 0 30px rgba(200,0,0,.6); }
+  #bigText.call { color: #e8e0d4; font-family: 'Nanum Pen Script'; font-weight: 400; font-size: clamp(54px, 9vw, 110px); letter-spacing: .1em; text-shadow: 0 0 40px #000; animation: callIn 3s forwards; }
+  #bigText.save { font-size: clamp(22px, 3vw, 32px); color: #e8c890; font-weight: 400; letter-spacing: .5em; }
+  @keyframes bigIn { 0% { opacity: 0; transform: scale(1.08); filter: blur(6px); } 15% { opacity: 1; transform: none; filter: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes callIn { 0% { opacity: 0; } 10% { opacity: 1; } 12% { opacity: .2; } 14% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+  #tip { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); font-size: 13px; color: #d0c8bc; background: rgba(0,0,0,.55); border: 1px solid #2a2020; padding: 7px 14px; opacity: 0; transition: opacity .5s; max-width: 90vw; text-align: center; }
+  #tip.show { opacity: 1; }
+  #bossbar { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); width: min(520px, 60vw); text-align: center; opacity: 0; transition: opacity .6s; }
+  #bossbar.show { opacity: 1; }
+  #bossName { font-family: 'Nanum Myeongjo', serif; font-weight: 800; color: #d8ccc0; letter-spacing: .4em; font-size: 15px; margin-bottom: 5px; }
+  #bossbar .tr { height: 6px; background: rgba(20,4,4,.85); border: 1px solid #4a1a1a; }
+  #bossFill { height: 100%; background: linear-gradient(90deg, #5a0006, #c0101a); transition: width .2s; }
+  #levelUp { position: absolute; left: 50%; top: 15%; transform: translateX(-50%); text-align: center; opacity: 0; }
+  #levelUp.show { animation: bigIn 3s forwards; }
+  #levelUp b { display: block; font-family: 'Nanum Myeongjo'; font-size: 34px; color: #e8c870; letter-spacing: .4em; text-shadow: 0 0 20px rgba(200,160,40,.5); }
+  #levelUp span { font-size: 13px; color: #c8bca8; }
+  .dmgNum { position: absolute; font-weight: 700; font-size: 18px; color: #e8e0d4; animation: dmgUp .9s ease-out forwards; transform: translate(-50%, -50%); }
+  .dmgNum.crit { color: #ff4040; font-size: 24px; }
+  @keyframes dmgUp { to { opacity: 0; margin-top: -40px; } }
+  body.lowhp #hpBar { animation: breathe .7s infinite; }
+  #clickHint { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 20; padding: 14px 28px; border: 1px solid #5a2020; background: rgba(0,0,0,.75); color: #e0d6cc; font-family: 'Nanum Myeongjo'; letter-spacing: .2em; display: none; pointer-events: auto; cursor: pointer; }
+  #clickHint.show { display: block; }
+
+  /* 눈꺼풀 (잠에서 깨는 장면) */
+  #eyelids { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
+  #eyelids::before, #eyelids::after { content: ''; position: absolute; left: -5%; right: -5%; height: 51%; background: #000; transform: translateY(-100%); }
+  #eyelids::before { top: 0; border-radius: 0 0 50% 50% / 0 0 30% 30%; }
+  #eyelids::after { bottom: 0; transform: translateY(100%); border-radius: 50% 50% 0 0 / 30% 30% 0 0; }
+  #eyelids.blink::before { animation: lidT 3.4s ease-in-out forwards; }
+  #eyelids.blink::after { animation: lidB 3.4s ease-in-out forwards; }
+  @keyframes lidT { 0% { transform: none; } 25% { transform: translateY(-70%); } 38% { transform: translateY(-5%); } 55% { transform: translateY(-85%); } 66% { transform: translateY(-30%); } 100% { transform: translateY(-100%); } }
+  @keyframes lidB { 0% { transform: none; } 25% { transform: translateY(70%); } 38% { transform: translateY(5%); } 55% { transform: translateY(85%); } 66% { transform: translateY(30%); } 100% { transform: translateY(100%); } }
+
+  /* ---------- 대화창 ---------- */
+  #dialog { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); width: min(780px, 92vw); background: linear-gradient(180deg, rgba(8,5,5,.88), rgba(4,3,3,.95)); border: 1px solid #3a2222; border-top: 2px solid #5a1a1a;
+    padding: 16px 22px 18px; display: none; pointer-events: auto; }
+  #dialog.show { display: block; animation: tin .25s; }
+  #dialog.narr { border-top-color: #3a3030; }
+  #dName { font-family: 'Nanum Myeongjo', serif; font-weight: 800; font-size: 15px; letter-spacing: .2em; margin-bottom: 6px; min-height: 4px; }
+  #dName.seoha { color: #a8b8d8; } #dName.enemy { color: #d03030; } #dName.me { color: #d8c8a0; }
+  #dText { font-size: 17px; line-height: 1.75; color: #ece4d8; min-height: 30px; white-space: pre-wrap; font-family: 'Nanum Myeongjo', serif; }
+  #dialog.narr #dText { color: #b8b0a6; font-style: normal; }
+  #dMore { position: absolute; right: 16px; bottom: 10px; font-size: 11px; color: #7a6a62; animation: breathe 1.2s infinite; }
+  #choices { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  #choices button { text-align: left; padding: 9px 12px; border: 1px solid #3a2626; background: rgba(30,10,10,.4); font-size: 15px; color: #e8dccc; font-family: 'Nanum Myeongjo', serif; }
+  #choices button:hover { background: rgba(90,10,16,.5); border-color: #8a2020; }
+
+  /* ---------- 일지 ---------- */
+  #doc { z-index: 25; background: rgba(0,0,0,.72); pointer-events: auto; }
+  .paper { width: min(520px, 92vw); max-height: 86vh; overflow-y: auto; padding: 38px 40px 30px; color: #2a2018; position: relative;
+    background: #d8ccb0 radial-gradient(ellipse at 30% 20%, rgba(255,250,230,.6), transparent 60%), repeating-linear-gradient(0deg, transparent 0 31px, rgba(60,80,120,.22) 31px 32px);
+    box-shadow: 0 10px 60px #000, inset 0 0 80px rgba(80,50,20,.35); transform: rotate(-.6deg); font-family: 'Nanum Pen Script', cursive; }
+  .paper.typed { font-family: 'Nanum Myeongjo', serif; background: #cfc8b8; }
+  .paper.burnt { box-shadow: 0 10px 60px #000, inset 0 0 120px rgba(30,10,0,.85); }
+  #docTitle { font-size: 30px; margin: 0; color: #3a1810; }
+  .paper.typed #docTitle { font-size: 20px; }
+  #docDate { font-size: 20px; color: #7a3020; margin-bottom: 14px; }
+  .paper.typed #docDate { font-size: 13px; }
+  #docBody { font-size: 25px; line-height: 32px; }
+  .paper.typed #docBody { font-size: 15px; line-height: 32px; }
+  #docClose { display: block; margin: 18px auto 0; font-family: 'Noto Sans KR'; font-size: 12px; color: #6a4a3a; }
+
+  /* ---------- 소지품 ---------- */
+  #inv .box { max-width: 620px; }
+  .itabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid #2a1a1a; }
+  .itab { padding: 8px 14px; color: #7a706a; font-size: 14px; border-bottom: 2px solid transparent; }
+  .itab.on { color: #f0e0d8; border-bottom-color: var(--red); }
+  .who { display: flex; gap: 14px; align-items: center; margin-bottom: 10px; }
+  .who .ava { width: 56px; height: 56px; border-radius: 50%; background: #2a0a10; display: flex; align-items: center; justify-content: center; font-family: 'Nanum Myeongjo'; font-weight: 800; color: #e0c0c0; overflow: hidden; flex: none; }
+  .who .ava img { width: 100%; height: 100%; object-fit: cover; }
+  .who b { font-size: 18px; } .who small { display: block; color: #8a807a; font-size: 12px; }
+  .xp { height: 3px; background: #2a2010; margin: 6px 0 2px; width: 220px; } .xp i { display: block; height: 100%; background: #c8a850; }
+  .pts { color: #e0c890 !important; }
+  .statRow { display: grid; grid-template-columns: 110px 1fr 34px; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #1a1212; font-size: 14px; }
+  .statRow b { color: #fff; margin-left: 4px; } .statRow small { color: #7a706a; font-size: 12px; }
+  .statRow button { border: 1px solid #6a2a20; color: #f0d0b0; height: 28px; font-size: 16px; }
+  .statRow button:disabled { opacity: .25; cursor: default; }
+  .statRow button:not(:disabled):hover { background: #3a1008; }
+  .sm { font-size: 12.5px !important; color: #7a706a !important; margin-top: 12px !important; }
+  .itemRow { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #1a1212; }
+  .itemRow.none { opacity: .4; }
+  .itemRow .ico { font-size: 24px; text-align: center; } .itemRow b { font-size: 14px; } .itemRow small { display: block; color: #7a706a; font-size: 12px; }
+  .itemRow button { border: 1px solid #4a2a26; padding: 4px 10px; font-size: 12px; color: #e0d0c0; }
+  .itemRow button:disabled { opacity: .3; }
+  #inv h4 { font-size: 13px; color: #a02a2a; letter-spacing: .2em; margin: 16px 0 6px; }
+  .klist { list-style: none; padding: 0 !important; } .klist li { padding: 4px 0; } .klist li.on { color: #f0e0d0; } .klist small { color: #6a605a; margin-left: 6px; }
+  .klist li.none { color: #5a524c; }
+  .docRow { display: block; width: 100%; text-align: left; padding: 10px; border-bottom: 1px solid #1e1414; } .docRow:hover { background: #160a0a; }
+  .docRow b { font-family: 'Nanum Myeongjo'; font-size: 15px; } .docRow small { display: block; color: #7a6a62; font-size: 12px; }
+  .qnow { color: #f0e0d8 !important; font-size: 16px !important; font-family: 'Nanum Myeongjo'; }
+  .qlist li { color: #a8a098; } .qlist li.done { color: #4e4844; text-decoration: line-through; }
+
+  /* ---------- 죽음 / 엔딩 ---------- */
+  #death { background: radial-gradient(ellipse at center, rgba(60,0,0,.75) 0%, rgba(0,0,0,.96) 70%); z-index: 40; }
+  #death h2 { font-family: 'Nanum Myeongjo', serif; font-weight: 800; font-size: clamp(36px, 6vw, 64px); color: #c0101a; letter-spacing: .25em; margin: 0; animation: rise 2s; }
+  #death p { color: #8a7a72; letter-spacing: .1em; }
+  #death button { display: block; margin: 8px auto; font-family: 'Nanum Myeongjo'; font-size: 17px; letter-spacing: .2em; color: #b0a89e; padding: 8px 20px; }
+  #death button:hover { color: #ff3a3a; }
+  #ending { background: #000; z-index: 40; cursor: pointer; overflow-y: auto; }
+  #endText { max-width: 640px; }
+  #endText p { font-family: 'Nanum Myeongjo', serif; font-size: clamp(16px, 2vw, 20px); color: #c8c0b4; line-height: 2; margin: 0; animation: rise 2s ease-out both; }
+  #endCard { display: none; margin-top: 36px; animation: rise 2.5s ease-out; cursor: default; }
+  #endCard.show { display: block; }
+  #endNo { color: var(--red); letter-spacing: .4em; font-size: 13px; }
+  #endTitle { font-family: 'Nanum Myeongjo', serif; font-weight: 800; font-size: clamp(42px, 7vw, 80px); color: #e8e0d4; letter-spacing: .3em; margin: 6px 0; }
+  #endSub { font-family: 'Nanum Myeongjo'; color: #8a8078; letter-spacing: .2em; }
+  #endStats { color: #6a625c; font-size: 13px; margin: 18px 0; line-height: 1.8; }
+  #endHint { color: #7a3a36; font-family: 'Nanum Pen Script'; font-size: 22px; min-height: 26px; }
+  #endCard button { margin: 6px; font-family: 'Nanum Myeongjo'; font-size: 16px; letter-spacing: .2em; color: #b0a89e; padding: 8px 18px; border: 1px solid #3a2222; }
+  #endCard button:hover { color: #ff3a3a; border-color: #7a1a1a; }
+
+  @media (max-width: 700px) {
+    #bars { width: 180px; } .hb { width: 42px; height: 42px; font-size: 17px; } #quest { max-width: 55vw; font-size: 12.5px; }
+    #weaponHud { bottom: 80px; } #menu { padding: 0 6vw; }
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<!-- 동의 -->
+<section class="screen center gate" id="consent">
+  <div class="card">
+    <h1>제7교시</h1>
+    <p class="lead">시작하기 전에 아래 내용을 읽고 동의해 주세요.</p>
+    <div class="warnBox">⚠️ 이 게임에는 <b>갑자기 튀어나오는 무서운 얼굴, 큰 비명 소리, 깜빡이는 화면, 피와 불에 관한 묘사</b>가 있어요. 무서운 것을 잘 못 견디거나 빛에 민감하다면 하지 않는 것이 좋아요.</div>
+    <div class="cItem cAll"><label><input type="checkbox" id="cAll"> 아래 내용에 모두 동의합니다</label></div>
+    <div class="cItem"><label><input type="checkbox" class="cReq"><span class="tag req">필수</span> 이용 약관 동의 <a href="#" class="cMore">보기</a></label>
+      <div class="cBody">1. 「제7교시」는 개인이 만든 무료 웹 게임이에요.<br>2. 게임 속 학교, 인물, 사건은 모두 지어낸 이야기이며 실제와 관계가 없어요.<br>3. 게임 기록은 지금 쓰는 브라우저에만 저장돼요. 브라우저 기록을 지우면 사라질 수 있어요.<br>4. 게임을 고치거나 바꾸는 동안 기록이 초기화될 수 있어요.<br>5. 게임 화면이나 내용을 다른 사람을 괴롭히는 데 쓰면 안 돼요.</div></div>
+    <div class="cItem"><label><input type="checkbox" class="cReq"><span class="tag req">필수</span> 개인정보 수집·이용 동의 <a href="#" class="cMore">보기</a></label>
+      <div class="cBody">· 구글 로그인 시 받는 정보: 이름, 프로필 사진 주소, 계정 고유 번호<br>· 쓰는 곳: 게임 속 주인공 이름, 메뉴의 프로필, 계정마다 따로 저장되는 진행 기록<br>· 저장 위치: <b>이 브라우저 안에만</b> 저장되고, 어떤 서버로도 보내지 않아요. 이메일은 받지 않아요.<br>· 지우는 법: 메뉴의 「로그아웃」을 누르거나 브라우저의 사이트 데이터를 지우면 사라져요.<br>· 동의하지 않으면 게임을 할 수 없지만, 구글 대신 게스트(별명)로 시작할 수 있어요.</div></div>
+    <div class="cItem"><label><input type="checkbox" class="cReq"><span class="tag req">필수</span> 공포·폭력 표현 확인 (만 15세 이상 권장) <a href="#" class="cMore">보기</a></label>
+      <div class="cBody">귀신, 피, 화재, 실종, 갇힘에 관한 이야기와 장면이 나와요. 전투(귀신을 때리는 장면)가 있어요. 무서우면 언제든 <kbd>Esc</kbd> 로 멈출 수 있어요.</div></div>
+    <div class="cItem"><label><input type="checkbox" class="cReq"><span class="tag req">필수</span> 광과민성 발작 경고 확인 <a href="#" class="cMore">보기</a></label>
+      <div class="cBody">화면이 빠르게 깜빡이거나 색이 반전되는 장면이 있어요. 빛에 민감한 사람은 발작을 일으킬 수 있어요. 어지럽거나 눈이 아프면 바로 멈추고 쉬세요. 설정에서 화면 흔들림과 강한 연출을 끌 수 있어요.</div></div>
+    <div class="cItem"><label><input type="checkbox" class="cOpt" id="cStrong" checked><span class="tag opt">선택</span> 강한 연출 사용 (최대 음량 비명, 큰 화면 흔들림)</label></div>
+    <div class="cItem"><label><input type="checkbox" class="cOpt" id="cRemember" checked><span class="tag opt">선택</span> 이 기기에서 로그인 상태 기억하기</label></div>
+    <button class="big" id="agreeBtn" disabled>동의하고 계속</button>
+  </div>
+</section>
+
+<!-- 로그인 -->
+<section class="screen center gate" id="login">
+  <div class="card">
+    <h1>제7교시</h1>
+    <p class="lead">출석부에 이름을 적어 주세요.<br>진행 기록은 계정마다 따로 저장돼요.</p>
+    <div id="gbtn"></div>
+    <div id="gnote"></div>
+    <div class="or">또는</div>
+    <div class="guestRow"><input id="guestName" maxlength="10" placeholder="별명 (게임 속 내 이름)" autocomplete="off"><button id="guestBtn">게스트로 시작</button></div>
+    <p class="fine">구글 계정 정보는 이 브라우저에만 저장되며 다른 곳으로 보내지 않아요.<br>실제 이름 대신 별명을 써도 괜찮아요.</p>
+  </div>
+</section>
+
+<!-- 불러오기 -->
+<section class="screen center" id="loading">
+  <p class="serif">폐교를 짓는 중</p>
+  <div class="bar"><div id="loadBar"></div></div>
+  <p id="loadMsg" style="font-size:12px;color:#5a524c;margin-top:12px"></p>
+</section>
+
+<!-- 메뉴 -->
+<section class="screen" id="menu">
+  <div class="title">
+    <h1>제<b>7</b>교시</h1>
+    <div class="en">THE SEVENTH PERIOD</div>
+    <div class="tag2">아무도 나가지 마시오.</div>
+  </div>
+  <nav>
+    <button id="btnContinue">이어하기</button>
+    <button id="btnNew">새 학기</button>
+    <button id="btnRecords">엔딩 기록</button>
+    <button id="btnSettings">설정</button>
+    <button id="btnHowto">조작법</button>
+  </nav>
+  <div id="menuEnds"></div>
+  <div class="menuFoot" id="menuFoot">헤드폰을 쓰고, 불을 끄고 해 보세요.</div>
+</section>
+<div id="profile"></div>
+
+<!-- 인트로 -->
+<section class="screen center" id="introScreen" onclick="Game.skipIntro()">
+  <div id="introText"></div>
+  <div class="skip"><kbd>Space</kbd> 건너뛰기</div>
+</section>
+
+<!-- 게임 -->
+<section class="screen" id="game">
+  <div id="eyelids"></div>
+  <div id="hud">
+    <div id="crosshair"></div>
+    <div id="prompt"></div>
+    <div id="quest"></div>
+    <div id="phoneHud" class="off"><span id="lightIco"></span><span class="tm">16:44</span><span class="sv">서비스 없음</span><span class="batt"><div id="batFill"></div></span><span id="bat">100%</span></div>
+    <div id="bossbar"><div id="bossName"></div><div class="tr"><div id="bossFill"></div></div></div>
+    <div id="tip"></div>
+    <div id="levelUp"></div>
+    <div id="toasts"></div>
+    <div id="subtitle"></div>
+    <div id="bigText"></div>
+    <div id="bars">
+      <div id="lvRow"><span id="lvTxt">Lv.1</span><div class="tr"><div id="expBar"></div></div></div>
+      <div class="bl"><i>체력</i><div class="tr"><div id="hpBar"></div></div><span id="hpTxt"></span></div>
+      <div class="bl"><i>정신력</i><div class="tr"><div id="sanBar"></div></div><span id="sanTxt"></span></div>
+      <div class="bl sta"><i>기력</i><div class="tr"><div id="staBar"></div></div><span></span></div>
+    </div>
+    <div id="hotbar">
+      <div class="hb" data-item="bandage"><kbd>Z</kbd>🩹<b id="hbBandage">0</b></div>
+      <div class="hb" data-item="pills"><kbd>X</kbd>💊<b id="hbPills">0</b></div>
+      <div class="hb" data-item="battery"><kbd>R</kbd>🔋<b id="hbBattery">0</b></div>
+      <div class="hb" data-item="salt"><kbd>G</kbd>🧂<b id="hbSalt">0</b></div>
+    </div>
+    <div id="weaponHud"></div>
+    <div id="dialog"><div id="dName"></div><div id="dText"></div><div id="choices"></div><div id="dMore"><kbd>E</kbd> / 클릭</div></div>
+  </div>
+</section>
+<div id="clickHint">화면을 클릭해서 계속</div>
+
+<!-- 일지 -->
+<div class="panel" id="doc"><div class="paper" id="docPaper"><h3 id="docTitle"></h3><div id="docDate"></div><div id="docBody"></div><button id="docClose"><kbd>E</kbd> 닫기</button></div></div>
+
+<!-- 소지품 -->
+<div class="panel" id="inv"><div class="box">
+  <div class="itabs"><button class="itab on" data-t="stat">상태</button><button class="itab" data-t="items">소지품</button><button class="itab" data-t="docs">일지</button><button class="itab" data-t="quest">목표</button></div>
+  <div id="invBody"></div>
+  <button class="back" id="invClose"><kbd>Tab</kbd> 닫기</button>
+</div></div>
+
+<!-- 일시정지 -->
+<div class="panel" id="pause"><div class="box">
+  <h2>일시정지</h2>
+  <button class="m" id="pResume">계속하기</button>
+  <button class="m" id="pSettings">설정</button>
+  <button class="m" id="pHowto">조작법</button>
+  <button class="m" id="pMenu">메뉴로 나가기</button>
+</div></div>
+
+<!-- 설정 -->
+<div class="panel" id="settings"><div class="box">
+  <h2>설정</h2>
+  <div class="row">마우스 감도<input type="range" id="sSens" min="0.3" max="2.5" step="0.05"></div>
+  <div class="row">소리 크기<input type="range" id="sVol" min="0" max="1" step="0.05"></div>
+  <div class="row">밝기<input type="range" id="sBright" min="0.7" max="1.8" step="0.05"></div>
+  <div class="row">화면 흔들림<input type="checkbox" id="sShake"></div>
+  <div class="row">강한 연출 (갑툭튀 최대)<input type="checkbox" id="sStrong"></div>
+  <div class="row">그래픽 품질<select id="sQual"><option value="high">높음</option><option value="mid">보통</option><option value="low">낮음 (그림자 끔)</option></select></div>
+  <div id="qualNote"></div>
+  <button class="back" id="sBack">돌아가기</button>
+</div></div>
+
+<!-- 조작법 -->
+<div class="panel" id="howto"><div class="box">
+  <h2>조작법</h2>
+  <p>수업 시간에 잠들었다 깨어나니, 학교는 20년 전에 문을 닫은 폐교가 되어 있었다. 칠판에는 있지도 않은 「7교시」가 적혀 있다.</p>
+  <h3>움직이기</h3>
+  <ul><li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 이동 · 마우스로 둘러보기</li><li><kbd>Shift</kbd> 달리기 (기력이 줄고 발소리가 커져요)</li><li><kbd>C</kbd> 숙이기 (조용히 걸어서 귀신이 잘 못 알아채요)</li><li><kbd>E</kbd> 조사하기 · 줍기 · 문 열기 · 대화 넘기기</li></ul>
+  <h3>싸우기</h3>
+  <ul><li>마우스 <kbd>왼쪽</kbd> 무기 휘두르기 · <kbd>1</kbd>~<kbd>3</kbd> 무기 바꾸기</li><li>마우스 <kbd>오른쪽</kbd> 꾹 — 손전등 빛 모으기. 귀신이 아파하고, 오래 비추면 움츠러들어요. 배터리가 빨리 닳아요.</li><li><kbd>F</kbd> 손전등 켜기/끄기 · 끄면 들키기 어렵지만 정신력이 줄어요</li><li><kbd>Z</kbd> 붕대 · <kbd>X</kbd> 진정제 · <kbd>R</kbd> 배터리 · <kbd>G</kbd> 소금 던지기</li></ul>
+  <h3>롤플레잉</h3>
+  <ul><li>귀신을 물리치거나 일지를 읽으면 경험치를 얻어요. 레벨이 오르면 <kbd>Tab</kbd> 에서 능력 점수(체력·정신력·근력·지구력)를 올려요.</li><li><b>촛불</b> 앞에서 <kbd>E</kbd> 를 누르면 진행이 기록되고 숨을 고를 수 있어요. 죽으면 마지막 촛불에서 다시 시작해요.</li><li>정신력이 바닥나면 헛것이 보이고 체력이 줄어들어요.</li><li>대화 중에는 <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> 으로 대답을 골라요. 대답에 따라 결말이 달라져요.</li></ul>
+  <h3>잊지 마</h3>
+  <p style="color:#c84a4a;font-family:'Nanum Pen Script';font-size:22px">누가 네 번호를 불러도, 절대 대답하지 마.</p>
+  <button class="back closePanel" data-p="howto">닫기</button>
+</div></div>
+
+<!-- 엔딩 기록 -->
+<div class="panel" id="records"><div class="box">
+  <h2>엔딩 기록</h2>
+  <ul id="recList"></ul>
+  <button class="back closePanel" data-p="records">닫기</button>
+</div></div>
+
+<!-- 죽음 -->
+<section class="screen center" id="death">
+  <h2>결석 처리되었습니다</h2>
+  <p id="deathStats"></p>
+  <button id="retryBtn">마지막 촛불에서 다시</button>
+  <button id="deathMenu">메뉴로</button>
+</section>
+
+<!-- 엔딩 -->
+<section class="screen center" id="ending">
+  <div id="endText"></div>
+  <div id="endCard">
+    <div id="endNo"></div>
+    <div id="endTitle"></div>
+    <div id="endSub"></div>
+    <div id="endStats"></div>
+    <div id="endHint"></div>
+    <button id="endRetry">마지막 기록에서 다시</button>
+    <button id="endMenu">메뉴로</button>
+  </div>
+</section>
+
+<div id="fade"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/world.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/story.js"></script>
+<script src="js/game.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
