@@ -15,7 +15,7 @@ Claude Code 와 함께 웹 게임을 만들어 보는 코딩 작업실이에요.
 | ⚔️ 리듬 파이터 | 리듬게임으로 몬스터와 싸우는 다크 판타지 액션 게임 (스테이지 12개, 스킬 트리) | [플레이](https://hyeonseora.github.io/QUEST-TRACK-2/home-projects/rhythm-fighter/) · [설명](home-projects/rhythm-fighter/README.md) | [exe](https://github.com/HyeonSeoRA/QUEST-TRACK-2/releases/latest/download/rhythm-fighter.exe) |
 | ⛏️ 스텔라 마이너 | 우주에서 소행성을 캐는 클리커 게임 | [플레이](https://hyeonseora.github.io/QUEST-TRACK-2/home-projects/stellar-miner/) · [설명](home-projects/stellar-miner/README.md) | [exe](https://github.com/HyeonSeoRA/QUEST-TRACK-2/releases/latest/download/stellar-miner.exe) |
 | 🔥 얼불춤 | 불과 얼음 행성이 도는 리듬 게임 (스테이지 5개) | [플레이](https://hyeonseora.github.io/QUEST-TRACK-2/week-01/dance-of-fire-and-ice/) · [설명](week-01/dance-of-fire-and-ice/README.md) | [exe](https://github.com/HyeonSeoRA/QUEST-TRACK-2/releases/latest/download/dance-of-fire-and-ice.exe) |
-| 🎲 운명의 굴림 | 굴릴 때마다 확률로 오라가 나오는 운 게임 (희귀 오라 연출, 도감, 상점, 자동 굴리기, 업적) | [플레이](https://hyeonseora.github.io/QUEST-TRACK-2/week-04/rng/) | [exe](https://github.com/HyeonSeoRA/QUEST-TRACK-2/releases/latest/download/rng.exe) |
+| 🎲 운명의 굴림 | 굴릴 때마다 확률로 오라가 나오는 운 게임 (희귀 오라 연출, 도감, 상점, 자동 굴리기, 업적) | [플레이](https://hyeonseora.github.io/QUEST-TRACK-2/week-04/rng/) · [설명](week-04/rng/README.md) | [exe](https://github.com/HyeonSeoRA/QUEST-TRACK-2/releases/latest/download/rng.exe) |
 | 🔢 2048 | 같은 숫자를 합쳐 2048 을 만드는 퍼즐 | [플레이](https://hyeonseora.github.io/QUEST-TRACK-2/week-01/2048/) · [설명](week-01/2048/README.md) | [exe](https://github.com/HyeonSeoRA/QUEST-TRACK-2/releases/latest/download/2048.exe) |
 | 🎮 게임 모음 | week-01 게임으로 가는 메뉴 페이지 | [열기](https://hyeonseora.github.io/QUEST-TRACK-2/week-01/game-menu/) · [설명](week-01/game-menu/README.md) | - |
 
