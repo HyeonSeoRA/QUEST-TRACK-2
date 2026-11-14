@@ -515,4 +515,6 @@ const Game = {
   },
 };
 
-window.addEventListener('load', () => Game.init());
+// 글꼴(인터넷)을 기다리지 않고 HTML 이 준비되면 바로 시작해요
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => Game.init());
+else Game.init();
