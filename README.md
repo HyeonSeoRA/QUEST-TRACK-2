@@ -8,6 +8,7 @@ Claude Code 와 함께 웹 게임을 만들어 보는 코딩 작업실이에요.
 
 | 게임 | 설명 | 플레이 | 받기 |
 |---|---|---|---|
+| 🏮 등불 원정대 | 동료 3명과 네 개의 땅을 지나 잿빛 왕을 쓰러뜨리는 도트 2D 턴제 RPG (직업 6개, 몬스터 26종, 우두머리 4명, 장비·상점·사건) | [플레이](https://hyeonseora.github.io/QUEST-TRACK-2/week-05/lantern-quest/) · [설명](week-05/lantern-quest/README.md) | - |
 | 🏫 제7교시 | 수업 중 잠들었다 깨어난 폐교에서 살아남는 3D 공포 롤플레잉 게임 (스토리, 전투, 레벨업, 엔딩 3개, 구글 로그인) | [플레이](https://hyeonseora.github.io/QUEST-TRACK-2/home-projects/seventh-period/) · [설명](home-projects/seventh-period/README.md) | [exe](https://github.com/HyeonSeoRA/QUEST-TRACK-2/releases/latest/download/seventh-period.exe) |
 | 🎧 비트 러너 | 박자에 맞춰 적을 베며 세상의 노래를 되찾는 리듬 액션 RPG (Phaser 3, 3장 9스테이지, 레벨·장비·상점, 이야기와 보스) | [플레이](https://hyeonseora.github.io/QUEST-TRACK-2/home-projects/beat-runner/) · [설명](home-projects/beat-runner/README.md) | [exe](https://github.com/HyeonSeoRA/QUEST-TRACK-2/releases/latest/download/beat-runner.exe) |
 | ⛏️ 마인크래프트 | 마인크래프트를 따라 만든 3D 블록 게임 (서바이벌·크리에이티브, 제작, 낮과 밤) | [플레이](https://hyeonseora.github.io/QUEST-TRACK-2/week-02/minecraft/) · [설명](week-02/minecraft/README.md) | [exe](https://github.com/HyeonSeoRA/QUEST-TRACK-2/releases/latest/download/minecraft.exe) |
@@ -36,6 +37,8 @@ QUEST-TRACK-2/
 │  └─ haunted-maze/           ← 망령의 미로
 ├─ week-04/                   ← 학원 수업 4주차
 │  └─ rng/                    ← 운명의 굴림
+├─ week-05/                   ← 학원 수업 5주차
+│  └─ lantern-quest/          ← 등불 원정대
 └─ home-projects/             ← 집에서 만든 작품
    ├─ beat-runner/            ← 비트 러너
    ├─ haunted-maze/           ← 망령의 미로
